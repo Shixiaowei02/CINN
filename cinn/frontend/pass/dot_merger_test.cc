@@ -51,7 +51,6 @@ void CompareResult(Program* program,
 
 /*
  * DotMerger Test
- * 2-d Tensor
  *
  * Before:
  * (m1, k) * (k, n) -> (m1, n)  ==> (m1 + m2, n)
@@ -63,11 +62,57 @@ void CompareResult(Program* program,
  * (m1 + m2, n) slice -> (m1, n), (m2, n)
  */
 
-TEST(DotMerger, test) {
+TEST(DotMerger, lhs) {
   if (!IsCompiledWithCUDA()) {
     return;
   }
   NetBuilder builder("net_builder");
+  auto a       = builder.CreateInput(Float(32), {10201, 50}, "A");
+  auto b       = builder.CreateInput(Float(32), {50, 50}, "B");
+  auto c       = builder.CreateInput(Float(32), {50, 50}, "C");
+  auto d       = builder.Matmul(a, b);
+  auto e       = builder.Matmul(a, c);
+  auto program = builder.Build();
+
+  Target target = common::DefaultNVGPUTarget();
+  std::vector<std::string> input_ids;
+  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  CompareResult(&program, target, input_ids, {d->id, e->id}, 0 /*size_diff*/, 123, true);
+}
+
+/*
+ * DotMerger Test
+ *
+ * Before:
+ * (m, k) * (k, n1) -> (m1, n1)  ==> (m, n1 + n2)
+ * (m, k) * (k, n2) -> (m2, n2)
+ *
+ * After:
+ * (k, n1) concat (k, n2) -> (k, n1 + n2)
+ * (m, k) * (k, n1 + n2) -> (m, n1 + n2)
+ * (m, n1 + n2) slice -> (m, n1), (m, n2)
+ */
+
+TEST(DotMerger, rhs) {
+  if (!IsCompiledWithCUDA()) {
+    return;
+  }
+  NetBuilder builder("net_builder");
+  auto a       = builder.CreateInput(Float(32), {50, 10201}, "A");
+  auto b       = builder.CreateInput(Float(32), {50, 10201}, "B");
+  auto c       = builder.CreateInput(Float(32), {50, 50}, "C");
+  auto d       = builder.Matmul(a, c);
+  auto e       = builder.Matmul(b, c);
+  auto program = builder.Build();
+
+  Target target = common::DefaultNVGPUTarget();
+  std::vector<std::string> input_ids;
+  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  CompareResult(&program, target, input_ids, {d->id, e->id}, 0 /*size_diff*/, 123, true);
 }
 
 }  // namespace cinn::frontend::pass
