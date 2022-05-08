@@ -61,7 +61,7 @@ class Pattern {
   template <typename... Args>
   VarRepr* AddVar(Args&&... args) {
     auto var = std::make_unique<VarRepr>(std::forward<Args>(args)...);
-    var->set_id(cur_id_++);
+    var->set_id(++cur_id_);
     VarRepr* ret = var.get();
     nodes_.insert(std::move(var));
     return ret;
@@ -70,14 +70,18 @@ class Pattern {
   template <typename... Args>
   InstrRepr* AddInstr(Args&&... args) {
     auto instr = std::make_unique<InstrRepr>(std::forward<Args>(args)...);
-    instr->set_id(cur_id_++);
+    instr->set_id(++cur_id_);
     InstrRepr* ret = instr.get();
     nodes_.insert(std::move(instr));
     return ret;
   }
 
+  int16_t cur_id() const { return cur_id_; }
+
+  const std::set<std::unique_ptr<Node>>& nodes() { return nodes_; }
+
  private:
-  uint16_t cur_id_{};
+  int16_t cur_id_{-1};
   std::set<std::unique_ptr<Node>> nodes_;
 };
 

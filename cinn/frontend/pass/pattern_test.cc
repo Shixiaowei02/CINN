@@ -28,6 +28,9 @@ TEST(Pattern, basic) {
 
   auto* matmul_0 = pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_2}, std::vector<VarRepr*>{output_0});
   auto* matmul_1 = pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_1}, std::vector<VarRepr*>{output_1});
+
+  CHECK_EQ(pattern.cur_id(), 6);
+  CHECK_EQ(pattern.nodes().size(), 7u);
 }
 
 }  // namespace cinn::frontend::pass
