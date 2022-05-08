@@ -37,8 +37,13 @@ bool operator<(const Node& lhs, const Node& rhs) { return lhs.id() < rhs.id(); }
 
 class VarRepr final : public Node {
  public:
+  VarRepr* set_external(bool value) {
+    external_ = value;
+    return this;
+  }
+
  private:
-  Variable* var_{};
+  bool external_{false};
   std::vector<std::function<bool(const Variable&)>> tellers_;
 };
 
@@ -50,7 +55,6 @@ class InstrRepr final : public Node {
   }
 
  private:
-  Instruction* instr_{};
   std::vector<std::function<bool(const Instruction&)>> tellers_;
   std::vector<VarRepr*> inputs_;
   std::vector<VarRepr*> outputs_;

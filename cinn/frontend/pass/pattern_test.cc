@@ -14,23 +14,40 @@
 
 #include "cinn/frontend/pass/pattern.h"
 
+#include "cinn/frontend/pass/test_utils.h"
 #include "gtest/gtest.h"
 
 namespace cinn::frontend::pass {
 
-TEST(Pattern, basic) {
-  Pattern pattern;
-  auto* input_0  = pattern.AddVar();
-  auto* input_1  = pattern.AddVar();
-  auto* input_2  = pattern.AddVar();
-  auto* output_0 = pattern.AddVar();
-  auto* output_1 = pattern.AddVar();
+TEST(Pattern, match) {
+  auto generate_src_pattern = []() -> Pattern {
+    Pattern pattern;
+    auto* input_0  = pattern.AddVar()->set_external(true);
+    auto* input_1  = pattern.AddVar()->set_external(true);
+    auto* input_2  = pattern.AddVar()->set_external(true);
+    auto* output_0 = pattern.AddVar()->set_external(true);
+    auto* output_1 = pattern.AddVar()->set_external(true);
 
-  auto* matmul_0 = pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_2}, std::vector<VarRepr*>{output_0});
-  auto* matmul_1 = pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_1}, std::vector<VarRepr*>{output_1});
+    auto* matmul_0 =
+        pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_2}, std::vector<VarRepr*>{output_0});
+    auto* matmul_1 =
+        pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_1}, std::vector<VarRepr*>{output_1});
 
-  CHECK_EQ(pattern.cur_id(), 6);
-  CHECK_EQ(pattern.nodes().size(), 7u);
+    CHECK_EQ(pattern.cur_id(), 6);
+    CHECK_EQ(pattern.nodes().size(), 7u);
+    return pattern;
+  };
+
+  auto generate_program = []() -> Program {
+    NetBuilder builder("net_builder");
+    auto a       = builder.CreateInput(Float(32), {10201, 50}, "A");
+    auto b       = builder.CreateInput(Float(32), {50, 50}, "B");
+    auto c       = builder.CreateInput(Float(32), {50, 50}, "C");
+    auto d       = builder.Matmul(a, b);
+    auto e       = builder.Matmul(a, c);
+    auto program = builder.Build();
+    return program;
+  };
 }
 
 }  // namespace cinn::frontend::pass
