@@ -63,9 +63,7 @@ class InstrRepr final : public Node {
       : inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
     tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type; });
   }
-
   const std::vector<VarRepr const*>& inputs() const { return inputs_; }
-
   const std::vector<VarRepr const*>& outputs() const { return outputs_; }
 
  private:
@@ -78,7 +76,7 @@ class Pattern {
  public:
   template <typename... Args>
   VarRepr* AddVar(Args&&... args) {
-    CHECK(!finished_);
+    CheckFinished();
     auto var = std::make_unique<VarRepr>(std::forward<Args>(args)...);
     var->set_id(++cur_id_);
     VarRepr* ret = var.get();
@@ -88,7 +86,7 @@ class Pattern {
 
   template <typename... Args>
   InstrRepr* AddInstr(Args&&... args) {
-    CHECK(!finished_);
+    CheckFinished();
     auto instr = std::make_unique<InstrRepr>(std::forward<Args>(args)...);
     instr->set_id(++cur_id_);
     InstrRepr* ret = instr.get();
@@ -98,12 +96,17 @@ class Pattern {
 
   int16_t cur_id() const { return cur_id_; }
 
+  const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_outs_; }
+
   const std::set<std::unique_ptr<Node>, NodeComp>& nodes() const { return nodes_; }
 
   void Finish() { finished_ = true; }
 
  private:
+  void CheckFinished() const { CHECK(!finished_); }
+
   void GenerateVarOuts() {
+    CheckFinished();
     for (const auto& node : nodes_) {
       const auto* instr = dynamic_cast<InstrRepr const*>(node.get());
       if (instr) {

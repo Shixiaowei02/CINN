@@ -32,7 +32,9 @@ TEST(Pattern, match) {
         "matmul", std::vector<VarRepr const*>{input_0, input_2}, std::vector<VarRepr const*>{output_0});
     auto* matmul_1 = pattern.AddInstr(
         "matmul", std::vector<VarRepr const*>{input_0, input_1}, std::vector<VarRepr const*>{output_1});
+    pattern.Finish();
 
+    CHECK_EQ(pattern.var_outs().size(), 3u);
     CHECK_EQ(pattern.cur_id(), 6);
     CHECK_EQ(pattern.nodes().size(), 7u);
     return pattern;
