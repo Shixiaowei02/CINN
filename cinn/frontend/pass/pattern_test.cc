@@ -14,7 +14,7 @@
 
 #include "cinn/frontend/pass/pattern.h"
 
-#include "cinn/frontend/pass/test_utils.h"
+#include "cinn/frontend/net_builder.h"
 #include "gtest/gtest.h"
 
 namespace cinn::frontend::pass {
@@ -28,10 +28,10 @@ TEST(Pattern, match) {
     auto* output_0 = pattern.AddVar()->set_external(true);
     auto* output_1 = pattern.AddVar()->set_external(true);
 
-    auto* matmul_0 =
-        pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_2}, std::vector<VarRepr*>{output_0});
-    auto* matmul_1 =
-        pattern.AddInstr("matmul", std::vector<VarRepr*>{input_0, input_1}, std::vector<VarRepr*>{output_1});
+    auto* matmul_0 = pattern.AddInstr(
+        "matmul", std::vector<VarRepr const*>{input_0, input_2}, std::vector<VarRepr const*>{output_0});
+    auto* matmul_1 = pattern.AddInstr(
+        "matmul", std::vector<VarRepr const*>{input_0, input_1}, std::vector<VarRepr const*>{output_1});
 
     CHECK_EQ(pattern.cur_id(), 6);
     CHECK_EQ(pattern.nodes().size(), 7u);

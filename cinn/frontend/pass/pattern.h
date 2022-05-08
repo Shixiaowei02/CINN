@@ -25,6 +25,7 @@ namespace cinn::frontend::pass {
 class Node {
  public:
   Node()            = default;
+  virtual ~Node()   = default;
   Node(const Node&) = delete;
   int16_t id() const { return id_; }
   void set_id(int16_t id) { id_ = id; }
@@ -33,7 +34,16 @@ class Node {
   int16_t id_{-1};
 };
 
-bool operator<(const Node& lhs, const Node& rhs) { return lhs.id() < rhs.id(); }
+struct NodeComp {
+  bool operator()(const Node* lhs, const Node* rhs) const {
+    CHECK(lhs && rhs);
+    return lhs->id() < rhs->id();
+  }
+  bool operator()(const std::unique_ptr<Node>& lhs, const std::unique_ptr<Node>& rhs) const {
+    CHECK(lhs && rhs);
+    return lhs->id() < rhs->id();
+  }
+};
 
 class VarRepr final : public Node {
  public:
@@ -49,21 +59,26 @@ class VarRepr final : public Node {
 
 class InstrRepr final : public Node {
  public:
-  InstrRepr(const char* type, std::vector<VarRepr*>&& inputs, std::vector<VarRepr*>&& outputs)
+  InstrRepr(const char* type, std::vector<VarRepr const*>&& inputs, std::vector<VarRepr const*>&& outputs)
       : inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
     tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type; });
   }
 
+  const std::vector<VarRepr const*>& inputs() const { return inputs_; }
+
+  const std::vector<VarRepr const*>& outputs() const { return outputs_; }
+
  private:
   std::vector<std::function<bool(const Instruction&)>> tellers_;
-  std::vector<VarRepr*> inputs_;
-  std::vector<VarRepr*> outputs_;
+  std::vector<VarRepr const*> inputs_;
+  std::vector<VarRepr const*> outputs_;
 };
 
 class Pattern {
  public:
   template <typename... Args>
   VarRepr* AddVar(Args&&... args) {
+    CHECK(!finished_);
     auto var = std::make_unique<VarRepr>(std::forward<Args>(args)...);
     var->set_id(++cur_id_);
     VarRepr* ret = var.get();
@@ -73,6 +88,7 @@ class Pattern {
 
   template <typename... Args>
   InstrRepr* AddInstr(Args&&... args) {
+    CHECK(!finished_);
     auto instr = std::make_unique<InstrRepr>(std::forward<Args>(args)...);
     instr->set_id(++cur_id_);
     InstrRepr* ret = instr.get();
@@ -82,11 +98,31 @@ class Pattern {
 
   int16_t cur_id() const { return cur_id_; }
 
-  const std::set<std::unique_ptr<Node>>& nodes() { return nodes_; }
+  const std::set<std::unique_ptr<Node>, NodeComp>& nodes() const { return nodes_; }
+
+  void Finish() { finished_ = true; }
 
  private:
+  void GenerateVarOuts() {
+    for (const auto& node : nodes_) {
+      const auto* instr = dynamic_cast<InstrRepr const*>(node.get());
+      if (instr) {
+        for (const auto* output : instr->outputs()) {
+          var_outs_[output].emplace_back(instr);
+        }
+      }
+    }
+  }
+
   int16_t cur_id_{-1};
-  std::set<std::unique_ptr<Node>> nodes_;
+  bool finished_{false};
+  std::set<std::unique_ptr<Node>, NodeComp> nodes_;
+  std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp> var_outs_;
+};
+
+class PatternMatcher {
+ public:
+ private:
 };
 
 }  // namespace cinn::frontend::pass
