@@ -95,16 +95,12 @@ class Pattern {
   }
 
   int16_t cur_id() const { return cur_id_; }
-
   const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_outs_; }
-
   const std::set<std::unique_ptr<Node>, NodeComp>& nodes() const { return nodes_; }
-
   void Finish() { finished_ = true; }
 
  private:
   void CheckFinished() const { CHECK(!finished_); }
-
   void GenerateVarOuts() {
     CheckFinished();
     for (const auto& node : nodes_) {
