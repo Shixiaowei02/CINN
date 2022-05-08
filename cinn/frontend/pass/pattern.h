@@ -34,17 +34,6 @@ class Node {
   int16_t id_{-1};
 };
 
-struct NodeComp {
-  bool operator()(const Node* lhs, const Node* rhs) const {
-    CHECK(lhs && rhs);
-    return lhs->id() < rhs->id();
-  }
-  bool operator()(const std::unique_ptr<Node>& lhs, const std::unique_ptr<Node>& rhs) const {
-    CHECK(lhs && rhs);
-    return lhs->id() < rhs->id();
-  }
-};
-
 class VarRepr final : public Node {
  public:
   VarRepr* set_external(bool value) {
@@ -62,6 +51,10 @@ class InstrRepr final : public Node {
   InstrRepr(const char* type, std::vector<VarRepr const*>&& inputs, std::vector<VarRepr const*>&& outputs)
       : inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
     tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type; });
+    tellers_.emplace_back([=](const Instruction& instr) -> bool {
+      return true;
+      // return instr->inputs.size() == inputs_.size() && instr->outputs.size() == outputs_.size();
+    });
   }
   const std::vector<VarRepr const*>& inputs() const { return inputs_; }
   const std::vector<VarRepr const*>& outputs() const { return outputs_; }
@@ -72,6 +65,18 @@ class InstrRepr final : public Node {
   std::vector<VarRepr const*> outputs_;
 };
 
+struct NodeComp {
+  bool operator()(const Node* lhs, const Node* rhs) const {
+    CHECK(lhs && rhs);
+    return lhs->id() < rhs->id();
+  }
+  template <typename T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
+  bool operator()(const std::unique_ptr<T>& lhs, const std::unique_ptr<T>& rhs) const {
+    CHECK(lhs && rhs);
+    return lhs->id() < rhs->id();
+  }
+};
+
 class Pattern {
  public:
   template <typename... Args>
@@ -80,7 +85,7 @@ class Pattern {
     auto var = std::make_unique<VarRepr>(std::forward<Args>(args)...);
     var->set_id(++cur_id_);
     VarRepr* ret = var.get();
-    nodes_.insert(std::move(var));
+    vars_.insert(std::move(var));
     return ret;
   }
 
@@ -90,24 +95,25 @@ class Pattern {
     auto instr = std::make_unique<InstrRepr>(std::forward<Args>(args)...);
     instr->set_id(++cur_id_);
     InstrRepr* ret = instr.get();
-    nodes_.insert(std::move(instr));
+    instrs_.insert(std::move(instr));
     return ret;
   }
 
   int16_t cur_id() const { return cur_id_; }
-  const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_outs_; }
-  const std::set<std::unique_ptr<Node>, NodeComp>& nodes() const { return nodes_; }
+  const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_repr_outs_; }
+  const std::set<std::unique_ptr<VarRepr>, NodeComp>& vars() const { return vars_; }
+  const std::set<std::unique_ptr<InstrRepr>, NodeComp>& instrs() const { return instrs_; }
   void Finish() { finished_ = true; }
 
  private:
   void CheckFinished() const { CHECK(!finished_); }
   void GenerateVarOuts() {
     CheckFinished();
-    for (const auto& node : nodes_) {
+    for (const auto& node : instrs_) {
       const auto* instr = dynamic_cast<InstrRepr const*>(node.get());
       if (instr) {
         for (const auto* output : instr->outputs()) {
-          var_outs_[output].emplace_back(instr);
+          var_repr_outs_[output].emplace_back(instr);
         }
       }
     }
@@ -115,13 +121,36 @@ class Pattern {
 
   int16_t cur_id_{-1};
   bool finished_{false};
-  std::set<std::unique_ptr<Node>, NodeComp> nodes_;
-  std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp> var_outs_;
+  std::set<std::unique_ptr<VarRepr>, NodeComp> vars_;
+  std::set<std::unique_ptr<InstrRepr>, NodeComp> instrs_;
+  std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp> var_repr_outs_;
 };
 
 class PatternMatcher {
  public:
+  PatternMatcher(const Program& program, const Pattern& pattern) : program_{&program}, pattern_{&pattern} {
+    for (size_t i = 0; i < program.size(); ++i) {
+      const auto& instr = program[i];
+      for (const auto& var : instr->inputs) {
+        var_outs_[var.get()].emplace_back(instr.get());
+      }
+    }
+  }
+
+  struct Match {
+    std::set<std::map<InstrRepr*, _Instruction_*, NodeComp>> pair;
+  };
+
+  struct HitGroup {
+    std::map<VarRepr*, std::vector<_Variable_*>> var_hits;
+    std::map<InstrRepr*, std::vector<_Instruction_*>> instr_hits;
+  };
+
  private:
+  Program const* program_{};
+  Pattern const* pattern_{};
+  // TODO: sequential stability
+  std::map<_Variable_ const*, std::vector<_Instruction_ const*>> var_outs_;
 };
 
 }  // namespace cinn::frontend::pass
