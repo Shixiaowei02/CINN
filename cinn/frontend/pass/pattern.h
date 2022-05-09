@@ -41,26 +41,41 @@ class VarRepr final : public Node {
     return this;
   }
 
+  bool Tell(const _Variable_* var) const {
+    bool ret = true;
+    for (const auto& teller : tellers_) {
+      ret = ret && teller(var);
+    }
+    return ret;
+  }
+
  private:
   bool external_{false};
-  std::vector<std::function<bool(const Variable&)>> tellers_;
+  std::vector<std::function<bool(const _Variable_*)>> tellers_;
 };
 
 class InstrRepr final : public Node {
  public:
   InstrRepr(const char* type, std::vector<VarRepr const*>&& inputs, std::vector<VarRepr const*>&& outputs)
       : inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
-    tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type; });
-    tellers_.emplace_back([=](const Instruction& instr) -> bool {
-      return true;
-      // return instr->inputs.size() == inputs_.size() && instr->outputs.size() == outputs_.size();
+    tellers_.emplace_back([=](const _Instruction_* instr) -> bool { return instr->op_type == type; });
+    tellers_.emplace_back([=](const _Instruction_* instr) -> bool {
+      return instr->inputs.size() == inputs_.size() && instr->outputs.size() == outputs_.size();
     });
   }
   const std::vector<VarRepr const*>& inputs() const { return inputs_; }
   const std::vector<VarRepr const*>& outputs() const { return outputs_; }
 
+  bool Tell(const _Instruction_* instr) const {
+    bool ret = true;
+    for (const auto& teller : tellers_) {
+      ret = ret && teller(instr);
+    }
+    return ret;
+  }
+
  private:
-  std::vector<std::function<bool(const Instruction&)>> tellers_;
+  std::vector<std::function<bool(const _Instruction_*)>> tellers_;
   std::vector<VarRepr const*> inputs_;
   std::vector<VarRepr const*> outputs_;
 };
@@ -135,22 +150,44 @@ class PatternMatcher {
         var_outs_[var.get()].emplace_back(instr.get());
       }
     }
+    GenerateHitGroup();
+  }
+
+  void GenerateHitGroup() {
+    for (auto& pt_var : pattern_->vars()) {
+      hits_.var_hits.emplace(std::make_pair<VarRepr*, std::vector<_Variable_*>>(pt_var.get(), {}));
+      for (auto& var : program_->GetInputs()) {
+        if (pt_var->Tell(var.get())) {
+          hits_.var_hits[pt_var.get()].emplace_back(var.get());
+        }
+      }
+    }
+    for (auto& pt_instr : pattern_->instrs()) {
+      hits_.instr_hits.emplace(std::make_pair<InstrRepr*, std::vector<_Instruction_*>>(pt_instr.get(), {}));
+      for (size_t i = 0; i < program_->size(); ++i) {
+        auto* instr = program_->operator[](i).get();
+        if (pt_instr->Tell(instr)) {
+          hits_.instr_hits[pt_instr.get()].emplace_back(instr);
+        }
+      }
+    }
   }
 
   struct Match {
     std::set<std::map<InstrRepr*, _Instruction_*, NodeComp>> pair;
   };
 
+ private:
   struct HitGroup {
-    std::map<VarRepr*, std::vector<_Variable_*>> var_hits;
-    std::map<InstrRepr*, std::vector<_Instruction_*>> instr_hits;
+    std::map<VarRepr*, std::vector<_Variable_*>, NodeComp> var_hits;
+    std::map<InstrRepr*, std::vector<_Instruction_*>, NodeComp> instr_hits;
   };
 
- private:
   Program const* program_{};
   Pattern const* pattern_{};
   // TODO: sequential stability
   std::map<_Variable_ const*, std::vector<_Instruction_ const*>> var_outs_;
+  HitGroup hits_;
 };
 
 }  // namespace cinn::frontend::pass
