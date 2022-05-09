@@ -50,6 +50,10 @@ TEST(Pattern, match) {
     auto program = builder.Build();
     return program;
   };
+
+  Pattern src_pattern = generate_src_pattern();
+  Program program     = generate_program();
+  PatternMatcher matcher(program, src_pattern);
 }
 
 }  // namespace cinn::frontend::pass

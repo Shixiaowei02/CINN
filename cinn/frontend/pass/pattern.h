@@ -57,12 +57,13 @@ class VarRepr final : public Node {
 class InstrRepr final : public Node {
  public:
   InstrRepr(const char* type, std::vector<VarRepr const*>&& inputs, std::vector<VarRepr const*>&& outputs)
-      : inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
-    tellers_.emplace_back([=](const _Instruction_* instr) -> bool { return instr->op_type == type; });
+      : type_{type}, inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
+    tellers_.emplace_back([=](const _Instruction_* instr) -> bool { return instr->op_type == type_; });
     tellers_.emplace_back([=](const _Instruction_* instr) -> bool {
       return instr->inputs.size() == inputs_.size() && instr->outputs.size() == outputs_.size();
     });
   }
+  const char* type() const { return type_; }
   const std::vector<VarRepr const*>& inputs() const { return inputs_; }
   const std::vector<VarRepr const*>& outputs() const { return outputs_; }
 
@@ -75,6 +76,7 @@ class InstrRepr final : public Node {
   }
 
  private:
+  const char* type_{};
   std::vector<std::function<bool(const _Instruction_*)>> tellers_;
   std::vector<VarRepr const*> inputs_;
   std::vector<VarRepr const*> outputs_;
@@ -118,18 +120,18 @@ class Pattern {
   const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_repr_outs_; }
   const std::set<std::unique_ptr<VarRepr>, NodeComp>& vars() const { return vars_; }
   const std::set<std::unique_ptr<InstrRepr>, NodeComp>& instrs() const { return instrs_; }
-  void Finish() { finished_ = true; }
+  void Finish() {
+    GenerateVarOuts();
+    finished_ = true;
+  }
 
  private:
   void CheckFinished() const { CHECK(!finished_); }
   void GenerateVarOuts() {
     CheckFinished();
-    for (const auto& node : instrs_) {
-      const auto* instr = dynamic_cast<InstrRepr const*>(node.get());
-      if (instr) {
-        for (const auto* output : instr->outputs()) {
-          var_repr_outs_[output].emplace_back(instr);
-        }
+    for (const auto& instr : instrs_) {
+      for (const auto* input : instr->inputs()) {
+        var_repr_outs_[input].emplace_back(instr.get());
       }
     }
   }
