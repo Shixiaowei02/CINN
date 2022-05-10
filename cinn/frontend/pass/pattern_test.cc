@@ -20,24 +20,24 @@
 namespace cinn::frontend::pass {
 
 TEST(Pattern, match) {
-  auto generate_src_pattern = []() -> Pattern {
-    Pattern pattern;
-    auto* input_0  = pattern.AddVar()->set_external(true);
-    auto* input_1  = pattern.AddVar()->set_external(true);
-    auto* input_2  = pattern.AddVar()->set_external(true);
-    auto* output_0 = pattern.AddVar()->set_external(true);
-    auto* output_1 = pattern.AddVar()->set_external(true);
+  auto generate_src_pattern = []() -> Digraph {
+    PatternBuilder builder;
+    auto* input_0  = builder.AddVar();
+    auto* input_1  = builder.AddVar();
+    auto* input_2  = builder.AddVar();
+    auto* output_0 = builder.AddVar();
+    auto* output_1 = builder.AddVar();
 
-    auto* matmul_0 = pattern.AddInstr(
-        "matmul", std::vector<VarRepr const*>{input_0, input_2}, std::vector<VarRepr const*>{output_0});
-    auto* matmul_1 = pattern.AddInstr(
-        "matmul", std::vector<VarRepr const*>{input_0, input_1}, std::vector<VarRepr const*>{output_1});
-    pattern.Finish();
+    auto* matmul_0 = builder.AddInstr(
+        "matmul", std::vector<PatternVar const*>{input_0, input_2}, std::vector<PatternVar const*>{output_0});
+    auto* matmul_1 = builder.AddInstr(
+        "matmul", std::vector<PatternVar const*>{input_0, input_1}, std::vector<PatternVar const*>{output_1});
+    CHECK_EQ(builder.cur_id(), 6);
 
-    CHECK_EQ(pattern.var_outs().size(), 3u);
-    CHECK_EQ(pattern.cur_id(), 6);
-    // CHECK_EQ(pattern.nodes().size(), 7u);
-    return pattern;
+    Digraph graph = builder.release();
+    CHECK_EQ(graph.nodes().size(), 7u);
+    CHECK_EQ(graph.adj().size(), 5u);
+    return graph;
   };
 
   auto generate_program = []() -> Program {
@@ -51,9 +51,12 @@ TEST(Pattern, match) {
     return program;
   };
 
-  Pattern src_pattern = generate_src_pattern();
-  Program program     = generate_program();
-  PatternMatcher matcher(program, src_pattern);
+  Digraph src_pattern = generate_src_pattern();
+  Digraph program     = ProgramGraphBuilder(generate_program()).release();
+  CHECK_EQ(program.nodes().size(), 7u);
+  PatternMatcher matcher(src_pattern, program);
+  auto patterns = matcher.DetectPatterns();
+  CHECK_EQ(patterns.size(), 1u);
 }
 
 }  // namespace cinn::frontend::pass

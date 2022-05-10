@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <set>
 
@@ -27,6 +28,9 @@ class Node {
   Node()            = default;
   virtual ~Node()   = default;
   Node(const Node&) = delete;
+
+  virtual bool Tell(const Node* instr) const { return false; }
+
   int16_t id() const { return id_; }
   void set_id(int16_t id) { id_ = id; }
 
@@ -34,17 +38,40 @@ class Node {
   int16_t id_{-1};
 };
 
-class VarRepr final : public Node {
- public:
-  VarRepr* set_external(bool value) {
-    external_ = value;
-    return this;
-  }
+std::ostream& operator<<(std::ostream& os, const Node& node) {
+  os << "[" << &node << "] Node id : " << node.id();
+  return os;
+}
 
-  bool Tell(const _Variable_* var) const {
-    bool ret = true;
-    for (const auto& teller : tellers_) {
-      ret = ret && teller(var);
+class ProgramVar final : public Node {
+ public:
+  ProgramVar(const _Variable_* var) : var_{var} {}
+  const _Variable_* raw() const { return var_; }
+
+ private:
+  const _Variable_* var_{};
+};
+
+class ProgramInstr final : public Node {
+ public:
+  ProgramInstr(const _Instruction_* instr) : instr_{instr} {}
+  const _Instruction_* raw() const { return instr_; }
+
+ private:
+  const _Instruction_* instr_{};
+};
+
+class PatternVar final : public Node {
+ public:
+  bool Tell(const Node* var) const override {
+    bool ret          = true;
+    const auto* p_var = dynamic_cast<ProgramVar const*>(var);
+    if (p_var) {
+      for (const auto& teller : tellers_) {
+        ret = ret && teller(p_var->raw());
+      }
+    } else {
+      ret = false;
     }
     return ret;
   }
@@ -54,23 +81,22 @@ class VarRepr final : public Node {
   std::vector<std::function<bool(const _Variable_*)>> tellers_;
 };
 
-class InstrRepr final : public Node {
+class PatternInstr final : public Node {
  public:
-  InstrRepr(const char* type, std::vector<VarRepr const*>&& inputs, std::vector<VarRepr const*>&& outputs)
-      : type_{type}, inputs_{std::move(inputs)}, outputs_{std::move(outputs)} {
+  PatternInstr(const char* type) : type_{type} {
     tellers_.emplace_back([=](const _Instruction_* instr) -> bool { return instr->op_type == type_; });
-    tellers_.emplace_back([=](const _Instruction_* instr) -> bool {
-      return instr->inputs.size() == inputs_.size() && instr->outputs.size() == outputs_.size();
-    });
   }
   const char* type() const { return type_; }
-  const std::vector<VarRepr const*>& inputs() const { return inputs_; }
-  const std::vector<VarRepr const*>& outputs() const { return outputs_; }
 
-  bool Tell(const _Instruction_* instr) const {
-    bool ret = true;
-    for (const auto& teller : tellers_) {
-      ret = ret && teller(instr);
+  bool Tell(const Node* instr) const override {
+    bool ret            = true;
+    const auto* p_instr = dynamic_cast<ProgramInstr const*>(instr);
+    if (p_instr) {
+      for (const auto& teller : tellers_) {
+        ret = ret && teller(p_instr->raw());
+      }
+    } else {
+      ret = false;
     }
     return ret;
   }
@@ -78,11 +104,23 @@ class InstrRepr final : public Node {
  private:
   const char* type_{};
   std::vector<std::function<bool(const _Instruction_*)>> tellers_;
-  std::vector<VarRepr const*> inputs_;
-  std::vector<VarRepr const*> outputs_;
 };
 
-struct NodeComp {
+class Target {
+ public:
+  Target(const Node* end, int16_t idx) : end_{end}, var_idx_{idx} {}
+  explicit Target(const Node* end) : end_{end} {}
+  const Node* end() const { return end_; }
+  int16_t var_idx() const { return var_idx_; }
+
+ private:
+  const Node* end_{};
+  int16_t var_idx_{-1};
+};
+
+bool operator<(const Target& lhs, const Target& rhs) { return lhs.end() < rhs.end(); }
+
+struct NodeLessThan {
   bool operator()(const Node* lhs, const Node* rhs) const {
     CHECK(lhs && rhs);
     return lhs->id() < rhs->id();
@@ -92,104 +130,279 @@ struct NodeComp {
     CHECK(lhs && rhs);
     return lhs->id() < rhs->id();
   }
+  bool operator()(const std::pair<Node const*, Node const*>& lhs,
+                  const std::pair<Node const*, Node const*>& rhs) const {
+    bool res = false;
+    if (lhs.first->id() < rhs.first->id()) {
+      res = true;
+    } else if (lhs.first->id() == rhs.first->id()) {
+      res = lhs.second->id() < rhs.second->id();
+    }
+    return res;
+  }
 };
 
-class Pattern {
+class Adjacent {
  public:
+  size_t size() const { return adj_.size(); }
+  void Add(Node const* start, Node const* end, int16_t idx) { adj_[start].emplace(Target(end, idx)); }
+  std::set<std::pair<Node const*, Node const*>, NodeLessThan> edges() const {
+    std::set<std::pair<Node const*, Node const*>, NodeLessThan> ret;
+    for (const auto& pair : adj_) {
+      for (const auto& target : pair.second) {
+        ret.emplace(std::pair<Node const*, Node const*>(pair.first, target.end()));
+      }
+    }
+    return ret;
+  }
+  bool HasEdge(Node const* start, Node const* end) const {
+    if (!adj_.count(start)) {
+      return false;
+    }
+    return adj_.at(start).count(Target(end, 0));
+  }
+
+ private:
+  std::map<Node const*, std::set<Target>, NodeLessThan> adj_;
+};
+
+class Digraph {
+ public:
+  Digraph(const Digraph&) = delete;
+  Digraph(Digraph&&)      = default;
+
+  Node* AddNode(std::unique_ptr<Node>&& node) {
+    auto* ret = nodes_.emplace(std::move(node)).first->get();
+    return ret;
+  }
   template <typename... Args>
-  VarRepr* AddVar(Args&&... args) {
-    CheckFinished();
-    auto var = std::make_unique<VarRepr>(std::forward<Args>(args)...);
+  void AddEdge(Args... args) {
+    adj_.Add(std::forward<Args>(args)...);
+  }
+  const std::set<std::unique_ptr<Node>, NodeLessThan>& nodes() const { return nodes_; }
+  const Adjacent& adj() const { return adj_; }
+
+  // TODO: check for directed acyclic.
+ private:
+  Digraph() = default;
+  std::set<std::unique_ptr<Node>, NodeLessThan> nodes_;
+  Adjacent adj_;
+
+  friend class GraphBuilder;
+};
+
+class GraphBuilder {
+ public:
+  GraphBuilder()                    = default;
+  GraphBuilder(const GraphBuilder&) = delete;
+  GraphBuilder(GraphBuilder&&)      = default;
+  virtual ~GraphBuilder()           = default;
+  virtual Digraph release()         = 0;
+
+ protected:
+  Digraph graph_;
+};
+
+class PatternBuilder final : public GraphBuilder {
+ public:
+  PatternVar* AddVar() {
+    auto var = std::make_unique<PatternVar>();
     var->set_id(++cur_id_);
-    VarRepr* ret = var.get();
-    vars_.insert(std::move(var));
+    PatternVar* ret = var.get();
+    graph_.AddNode(std::move(var));
     return ret;
   }
 
-  template <typename... Args>
-  InstrRepr* AddInstr(Args&&... args) {
-    CheckFinished();
-    auto instr = std::make_unique<InstrRepr>(std::forward<Args>(args)...);
+  PatternInstr* AddInstr(const char* type,
+                         const std::vector<PatternVar const*>& inputs,
+                         const std::vector<PatternVar const*>& outputs) {
+    auto instr = std::make_unique<PatternInstr>(type);
     instr->set_id(++cur_id_);
-    InstrRepr* ret = instr.get();
-    instrs_.insert(std::move(instr));
+    PatternInstr* ret = instr.get();
+    graph_.AddNode(std::move(instr));
+
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      graph_.AddEdge(inputs[i], ret, i);
+    }
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      graph_.AddEdge(ret, outputs[i], i);
+    }
     return ret;
   }
 
   int16_t cur_id() const { return cur_id_; }
-  const std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp>& var_outs() const { return var_repr_outs_; }
-  const std::set<std::unique_ptr<VarRepr>, NodeComp>& vars() const { return vars_; }
-  const std::set<std::unique_ptr<InstrRepr>, NodeComp>& instrs() const { return instrs_; }
-  void Finish() {
-    GenerateVarOuts();
-    finished_ = true;
-  }
+  Digraph release() override { return std::move(graph_); }
 
  private:
-  void CheckFinished() const { CHECK(!finished_); }
-  void GenerateVarOuts() {
-    CheckFinished();
-    for (const auto& instr : instrs_) {
-      for (const auto* input : instr->inputs()) {
-        var_repr_outs_[input].emplace_back(instr.get());
-      }
+  int16_t cur_id_{-1};
+};
+
+class ProgramGraphBuilder final : public GraphBuilder {
+ public:
+  ProgramGraphBuilder(const Program& program) {
+    for (size_t i = 0; i < program.size(); ++i) {
+      AddInstr(program[i].get());
     }
+  }
+  Digraph release() override { return std::move(graph_); }
+
+ private:
+  void AddInstr(const _Instruction_* instr) {
+    auto p_instr    = std::make_unique<ProgramInstr>(instr);
+    auto* raw_instr = p_instr.get();
+    p_instr->set_id(++cur_id_);
+    graph_.AddNode(std::move(p_instr));
+
+    for (size_t i = 0; i < instr->inputs.size(); ++i) {
+      auto* raw_var = instr->inputs[i].get();
+      if (!VarExists(raw_var)) {
+        AddVar(raw_var);
+      }
+      graph_.AddEdge(var_map_[raw_var], raw_instr, i);
+    }
+    for (size_t i = 0; i < instr->outputs.size(); ++i) {
+      auto* raw_var = instr->outputs[i].get();
+      if (!VarExists(raw_var)) {
+        AddVar(raw_var);
+      }
+      graph_.AddEdge(raw_instr, var_map_[raw_var], i);
+    }
+  }
+
+  bool VarExists(const _Variable_* var) const { return var_map_.count(var); }
+
+  void AddVar(const _Variable_* var) {
+    CHECK(!VarExists(var)) << "Repeated addition of variables is not allowed.";
+    auto p_var = std::make_unique<ProgramVar>(var);
+    auto* raw  = p_var.get();
+    p_var->set_id(++cur_id_);
+    graph_.AddNode(std::move(p_var));
+    var_map_[var] = raw;
   }
 
   int16_t cur_id_{-1};
-  bool finished_{false};
-  std::set<std::unique_ptr<VarRepr>, NodeComp> vars_;
-  std::set<std::unique_ptr<InstrRepr>, NodeComp> instrs_;
-  std::map<VarRepr const*, std::vector<InstrRepr const*>, NodeComp> var_repr_outs_;
+  std::map<const _Variable_*, ProgramVar*> var_map_;
 };
 
+// TODO: use a more classical algorithm.
 class PatternMatcher {
  public:
-  PatternMatcher(const Program& program, const Pattern& pattern) : program_{&program}, pattern_{&pattern} {
-    for (size_t i = 0; i < program.size(); ++i) {
-      const auto& instr = program[i];
-      for (const auto& var : instr->inputs) {
-        var_outs_[var.get()].emplace_back(instr.get());
-      }
+  using pattern_node_t = Node;
+  using program_node_t = Node;
+  PatternMatcher(const Digraph& pattern, const Digraph& program) : program_{&program}, pattern_{&pattern} {
+    pattern_edges_ = pattern_->adj().edges();
+    NodeMatch();
+    VLOG(5) << "[Program Edge]";
+    for (auto& a : program_->adj().edges()) {
+      VLOG(5) << *(a.first) << " -> " << *(a.second);
     }
-    GenerateHitGroup();
-  }
-
-  void GenerateHitGroup() {
-    for (auto& pt_var : pattern_->vars()) {
-      hits_.var_hits.emplace(std::make_pair<VarRepr*, std::vector<_Variable_*>>(pt_var.get(), {}));
-      for (auto& var : program_->GetInputs()) {
-        if (pt_var->Tell(var.get())) {
-          hits_.var_hits[pt_var.get()].emplace_back(var.get());
-        }
-      }
-    }
-    for (auto& pt_instr : pattern_->instrs()) {
-      hits_.instr_hits.emplace(std::make_pair<InstrRepr*, std::vector<_Instruction_*>>(pt_instr.get(), {}));
-      for (size_t i = 0; i < program_->size(); ++i) {
-        auto* instr = program_->operator[](i).get();
-        if (pt_instr->Tell(instr)) {
-          hits_.instr_hits[pt_instr.get()].emplace_back(instr);
-        }
-      }
+    VLOG(5) << "[Pattern Edge]";
+    for (auto& a : pattern_->adj().edges()) {
+      VLOG(5) << *(a.first) << " -> " << *(a.second);
     }
   }
 
-  struct Match {
-    std::set<std::map<InstrRepr*, _Instruction_*, NodeComp>> pair;
-  };
+  std::vector<std::map<pattern_node_t const*, program_node_t const*>> DetectPatterns() {
+    std::vector<std::map<pattern_node_t const*, program_node_t const*>> res;
+    std::array<std::vector<HitGroup>, 2> bi_records;
+    auto& init_groups = bi_records[0];
+
+    auto* first_pnode = pdnodes2nodes_.begin()->first;
+    if (!pdnodes2nodes_.count(first_pnode)) {
+      return res;
+    }
+    for (auto* node : pdnodes2nodes_[first_pnode]) {
+      HitGroup group;
+      group.Register(node, first_pnode);
+      init_groups.emplace_back(std::move(group));
+    }
+    int step{0};
+    for (const auto& edge : pattern_edges_) {
+      auto& pre_groups = bi_records[step % 2];
+      auto& cur_groups = bi_records[1 - (step++ % 2)];
+      cur_groups.clear();
+      for (const auto* source : pdnodes2nodes_[edge.first]) {
+        for (const auto* target : pdnodes2nodes_[edge.second]) {
+          for (const auto& group : pre_groups) {
+            if (program_->adj().HasEdge(source, target)) {
+              HitGroup new_group = group;
+              bool flag          = new_group.Match(source, edge.first) && new_group.Match(target, edge.second);
+              if (flag) {
+                new_group.Register(source, edge.first);
+                new_group.Register(target, edge.second);
+                cur_groups.push_back(new_group);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // TODO: Distinguishing and processing of external nodes.
+    std::set<program_node_t const*> visited;
+    for (auto& group : bi_records[step % 2]) {
+      std::map<pattern_node_t const*, program_node_t const*> subgraph;
+      bool overlapped{false};
+      for (auto& role : group.roles()) {
+        if (visited.find(role.second) == visited.end()) {
+          subgraph.emplace(role.first, role.second);
+        } else {
+          overlapped = true;
+        }
+      }
+      if (!overlapped) {
+        for (auto& role : group.roles()) {
+          visited.emplace(role.second);
+        }
+        VLOG(5) << "[Matched] : pattern -> program";
+        for (auto& pair : subgraph) {
+          VLOG(5) << "   -- " << *(pair.first) << " -> " << *(pair.second);
+        }
+        res.emplace_back(std::move(subgraph));
+      }
+    }
+    return res;
+  }
 
  private:
-  struct HitGroup {
-    std::map<VarRepr*, std::vector<_Variable_*>, NodeComp> var_hits;
-    std::map<InstrRepr*, std::vector<_Instruction_*>, NodeComp> instr_hits;
+  class HitGroup {
+   public:
+    const std::map<pattern_node_t const*, program_node_t const*, NodeLessThan>& roles() const { return roles_; }
+    void Register(program_node_t const* node, pattern_node_t const* pat) {
+      roles_[pat] = node;
+      nodes_.insert(node);
+    }
+
+    bool Match(program_node_t const* node, pattern_node_t const* pat) const {
+      if (nodes_.count(node)) {
+        if (roles_.count(pat) && roles_.at(pat) == node) return true;
+        return false;
+      } else {
+        if (roles_.count(pat) && roles_.at(pat) != node) return false;
+        return true;
+      }
+    }
+
+   private:
+    std::map<pattern_node_t const*, program_node_t const*, NodeLessThan> roles_;
+    std::set<program_node_t const*> nodes_;
   };
 
-  Program const* program_{};
-  Pattern const* pattern_{};
-  // TODO: sequential stability
-  std::map<_Variable_ const*, std::vector<_Instruction_ const*>> var_outs_;
-  HitGroup hits_;
+  void NodeMatch() {
+    for (auto& pt_node : pattern_->nodes()) {
+      for (auto& pr_node : program_->nodes()) {
+        if (pt_node->Tell(pr_node.get())) {
+          pdnodes2nodes_[pt_node.get()].emplace_back(pr_node.get());
+        }
+      }
+    }
+  }
+
+  Digraph const* program_{};
+  Digraph const* pattern_{};
+  std::map<pattern_node_t const*, std::vector<program_node_t const*>, NodeLessThan> pdnodes2nodes_;
+  std::set<std::pair<Node const*, Node const*>, NodeLessThan> pattern_edges_;
+  std::vector<HitGroup> groups_;
 };
 
 }  // namespace cinn::frontend::pass
