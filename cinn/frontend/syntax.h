@@ -98,6 +98,8 @@ class Placeholder {
     var_ = var;
   }
 
+  cinn::frontend::_Variable_* get() { return var_.get(); }
+
   const std::vector<int>& shape() const { return var_->shape; }
 
   Type type() const { return var_->type; }
