@@ -25,6 +25,7 @@ void CompareResult(Program* program,
                    int seed          = -1,
                    bool print_tensor = false) {
   std::unordered_set<std::string> fetch_ids(output_ids.begin(), output_ids.end());
+
   // apply common pass
   ProgramPass::Apply(program, fetch_ids, target, {"Decomposer", "RemoveIdentity"});
 
@@ -33,13 +34,8 @@ void CompareResult(Program* program,
   // get original output
   auto origin_out = RunProgram(*program, target, input_ids, output_ids, seed, print_tensor);
 
-  // fuse transpose + add + dot, then run and get the fused output
-  ProgramPass::Apply(program, fetch_ids, target, {"TransposeFolding", "GemmRewriter"});
+  ProgramPass::Apply(program, fetch_ids, target, {"TransposeFolding", "DotMerger"});
 
-  // get fused program size
-  auto fused_size = program->size();
-  ASSERT_EQ(size_diff, origin_size - fused_size);
-  // get fused output
   auto fused_out = RunProgram(*program, target, input_ids, output_ids, seed, print_tensor);
 
   ASSERT_EQ(origin_out.size(), fused_out.size());
@@ -67,11 +63,12 @@ TEST(DotMerger, lhs) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {10201, 50}, "A");
-  auto b       = builder.CreateInput(Float(32), {50, 50}, "B");
-  auto c       = builder.CreateInput(Float(32), {50, 50}, "C");
-  auto d       = builder.Matmul(a, b);
-  auto e       = builder.Matmul(a, c);
+  auto a       = builder.CreateInput(Float(32), {2, 1}, "A");
+  auto b       = builder.CreateInput(Float(32), {1, 2}, "B");
+  auto c       = builder.CreateInput(Float(32), {1, 1}, "C");
+  auto d       = builder.Matmul(a, b);  // {2, 2}
+  auto e       = builder.Matmul(a, c);  // {2, 1}
+  auto f       = builder.Concat({d, e}, 1);
   auto program = builder.Build();
 
   Target target = common::DefaultNVGPUTarget();
@@ -79,40 +76,7 @@ TEST(DotMerger, lhs) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  CompareResult(&program, target, input_ids, {d->id, e->id}, 0 /*size_diff*/, 123, true);
-}
-
-/*
- * DotMerger Test
- *
- * Before:
- * (m, k) * (k, n1) -> (m1, n1)  ==> (m, n1 + n2)
- * (m, k) * (k, n2) -> (m2, n2)
- *
- * After:
- * (k, n1) concat (k, n2) -> (k, n1 + n2)
- * (m, k) * (k, n1 + n2) -> (m, n1 + n2)
- * (m, n1 + n2) slice -> (m, n1), (m, n2)
- */
-
-TEST(DotMerger, rhs) {
-  if (!IsCompiledWithCUDA()) {
-    return;
-  }
-  NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {50, 10201}, "A");
-  auto b       = builder.CreateInput(Float(32), {50, 10201}, "B");
-  auto c       = builder.CreateInput(Float(32), {50, 50}, "C");
-  auto d       = builder.Matmul(a, c);
-  auto e       = builder.Matmul(b, c);
-  auto program = builder.Build();
-
-  Target target = common::DefaultNVGPUTarget();
-  std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
-                    std::back_inserter(input_ids),
-                    [](absl::string_view id) { return std::string(id); });
-  CompareResult(&program, target, input_ids, {d->id, e->id}, 0 /*size_diff*/, 123, true);
+  CompareResult(&program, target, input_ids, {f->id}, 0, 123, true);
 }
 
 }  // namespace cinn::frontend::pass

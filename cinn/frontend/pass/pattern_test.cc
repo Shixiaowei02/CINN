@@ -54,9 +54,10 @@ TEST(Pattern, match) {
   Digraph src_pattern = generate_src_pattern();
   Digraph program     = ProgramGraphBuilder(generate_program()).release();
   CHECK_EQ(program.nodes().size(), 7u);
-  PatternMatcher matcher(src_pattern, program);
-  auto patterns = matcher.DetectPatterns();
-  CHECK_EQ(patterns.size(), 1u);
+  PatternMatcher matcher;
+  matcher.Init(src_pattern, program);
+  auto matches = matcher.DetectPatterns();
+  CHECK_EQ(matches.size(), 1u);
 }
 
 }  // namespace cinn::frontend::pass

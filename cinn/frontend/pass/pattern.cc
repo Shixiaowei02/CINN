@@ -14,10 +14,20 @@
 
 #include "cinn/frontend/pass/pattern.h"
 
+#include <iostream>
+
 namespace cinn::frontend::pass {
 
 std::ostream& operator<<(std::ostream& os, const Node& node) {
-  os << "[" << &node << "] Node id : " << node.id();
+  std::string type;
+  auto* instr = dynamic_cast<ProgramInstr const*>(&node);
+  auto* var   = dynamic_cast<ProgramVar const*>(&node);
+  if (instr) {
+    type = instr->raw()->get()->op_type;
+  } else if (var) {
+    type = var->raw()->get()->id;
+  }
+  os << "Node (" << node.id() << ") " << type << " [" << &node << "]";
   return os;
 }
 
@@ -80,6 +90,8 @@ bool Adjacent::HasEdge(Node const* start, Node const* end) const {
   return adj_.at(start).count(Target(end, 0));
 }
 
+bool operator<(const Target& lhs, const Target& rhs) { return lhs.end() < rhs.end(); }
+
 PatternVar* PatternBuilder::AddVar() {
   auto var = std::make_unique<PatternVar>();
   var->set_id(++cur_id_);
@@ -105,60 +117,61 @@ PatternInstr* PatternBuilder::AddInstr(const char* type,
   return ret;
 }
 
+std::ostream& operator<<(std::ostream& os, const Digraph& graph) {
+  for (auto& a : graph.adj().edges()) {
+    std::cout << *(a.first) << " -> " << *(a.second) << '\n';
+  }
+  return os;
+}
+
 ProgramGraphBuilder::ProgramGraphBuilder(const Program& program) {
   for (size_t i = 0; i < program.size(); ++i) {
-    AddInstr(program[i].get());
+    AddInstr(program[i]);
   }
 }
 
-void ProgramGraphBuilder::AddInstr(const _Instruction_* instr) {
+void ProgramGraphBuilder::AddInstr(const Instruction& instr) {
   auto p_instr    = std::make_unique<ProgramInstr>(instr);
   auto* raw_instr = p_instr.get();
   p_instr->set_id(++cur_id_);
   graph_.AddNode(std::move(p_instr));
 
   for (size_t i = 0; i < instr->inputs.size(); ++i) {
-    auto* raw_var = instr->inputs[i].get();
-    if (!VarExists(raw_var)) {
-      AddVar(raw_var);
+    const auto& var = instr->inputs[i];
+    if (!VarExists(var)) {
+      AddVar(var);
     }
-    graph_.AddEdge(var_map_[raw_var], raw_instr, i);
+    graph_.AddEdge(var_map_[var.get()], raw_instr, i);
   }
   for (size_t i = 0; i < instr->outputs.size(); ++i) {
-    auto* raw_var = instr->outputs[i].get();
-    if (!VarExists(raw_var)) {
-      AddVar(raw_var);
+    const auto& var = instr->outputs[i];
+    if (!VarExists(var)) {
+      AddVar(var);
     }
-    graph_.AddEdge(raw_instr, var_map_[raw_var], i);
+    graph_.AddEdge(raw_instr, var_map_[var.get()], i);
   }
 }
 
-void ProgramGraphBuilder::AddVar(const _Variable_* var) {
+void ProgramGraphBuilder::AddVar(const Variable& var) {
   CHECK(!VarExists(var)) << "Repeated addition of variables is not allowed.";
   auto p_var = std::make_unique<ProgramVar>(var);
   auto* raw  = p_var.get();
   p_var->set_id(++cur_id_);
   graph_.AddNode(std::move(p_var));
-  var_map_[var] = raw;
+  var_map_[var.get()] = raw;
 }
 
-PatternMatcher::PatternMatcher(const Digraph& pattern, const Digraph& program)
-    : program_{&program}, pattern_{&pattern} {
+void PatternMatcher::Init(const Digraph& pattern, const Digraph& program) {
+  program_       = &program;
+  pattern_       = &pattern;
   pattern_edges_ = pattern_->adj().edges();
   NodeMatch();
-  VLOG(5) << "[Program Edge]";
-  for (auto& a : program_->adj().edges()) {
-    VLOG(5) << *(a.first) << " -> " << *(a.second);
-  }
-  VLOG(5) << "[Pattern Edge]";
-  for (auto& a : pattern_->adj().edges()) {
-    VLOG(5) << *(a.first) << " -> " << *(a.second);
-  }
+  VLOG(5) << "[Program Graph] " << program;
+  VLOG(5) << "[Pattern Graph] " << pattern;
 }
 
-std::vector<std::map<PatternMatcher::pattern_node_t const*, PatternMatcher::program_node_t const*>>
-PatternMatcher::DetectPatterns() {
-  std::vector<std::map<PatternMatcher::pattern_node_t const*, PatternMatcher::program_node_t const*>> res;
+std::vector<PatternMatcher::pattern_map_t> PatternMatcher::DetectPatterns() {
+  std::vector<PatternMatcher::pattern_map_t> res;
   std::array<std::vector<HitGroup>, 2> bi_records;
   auto& init_groups = bi_records[0];
 
@@ -237,5 +250,29 @@ void PatternMatcher::NodeMatch() {
       }
     }
   }
+}
+
+const cinn::frontend::Instruction* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label) {
+  for (auto& match : matches) {
+    if (!std::strcmp(label, match.first->label())) {
+      const auto* program_node = dynamic_cast<ProgramInstr const*>(match.second);
+      if (program_node) {
+        return program_node->raw();
+      }
+    }
+  }
+  return {};
+}
+
+const cinn::frontend::Variable* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label) {
+  for (auto& match : matches) {
+    if (!std::strcmp(label, match.first->label())) {
+      const auto* var_node = dynamic_cast<ProgramVar const*>(match.second);
+      if (var_node) {
+        return var_node->raw();
+      }
+    }
+  }
+  return {};
 }
 }  // namespace cinn::frontend::pass

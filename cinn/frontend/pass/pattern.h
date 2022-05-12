@@ -33,52 +33,63 @@ class Node {
 
   int16_t id() const { return id_; }
   void set_id(int16_t id) { id_ = id; }
+  void set_label(const char* label) { label_ = label; }
+  const char* label() const { return label_; }
 
  private:
   int16_t id_{-1};
+  const char* label_{};
 };
 
 std::ostream& operator<<(std::ostream& os, const Node& node);
 
 class ProgramVar final : public Node {
  public:
-  ProgramVar(const _Variable_* var) : var_{var} {}
-  const _Variable_* raw() const { return var_; }
+  ProgramVar(const Variable& var) : var_{var} {}
+  const Variable* raw() const { return &var_; }
 
  private:
-  const _Variable_* var_{};
+  Variable var_;
 };
 
 class ProgramInstr final : public Node {
  public:
-  ProgramInstr(const _Instruction_* instr) : instr_{instr} {}
-  const _Instruction_* raw() const { return instr_; }
+  ProgramInstr(const Instruction& instr) : instr_{instr} {}
+  const Instruction* raw() const { return &instr_; }
 
  private:
-  const _Instruction_* instr_{};
+  Instruction instr_;
 };
 
 class PatternVar final : public Node {
  public:
   bool Tell(const Node* var) const override;
+  PatternVar* set_label(const char* label) {
+    Node::set_label(label);
+    return this;
+  }
 
  private:
   bool external_{false};
-  std::vector<std::function<bool(const _Variable_*)>> tellers_;
+  std::vector<std::function<bool(const Variable*)>> tellers_;
 };
 
 class PatternInstr final : public Node {
  public:
   PatternInstr(const char* type) : type_{type} {
-    tellers_.emplace_back([=](const _Instruction_* instr) -> bool { return instr->op_type == type_; });
+    tellers_.emplace_back([=](const Instruction* instr) -> bool { return instr->get()->op_type == type_; });
   }
   const char* type() const { return type_; }
+  PatternInstr* set_label(const char* label) {
+    Node::set_label(label);
+    return this;
+  }
 
   bool Tell(const Node* instr) const override;
 
  private:
   const char* type_{};
-  std::vector<std::function<bool(const _Instruction_*)>> tellers_;
+  std::vector<std::function<bool(const Instruction*)>> tellers_;
 };
 
 class Target {
@@ -93,7 +104,7 @@ class Target {
   int16_t var_idx_{-1};
 };
 
-bool operator<(const Target& lhs, const Target& rhs) { return lhs.end() < rhs.end(); }
+bool operator<(const Target& lhs, const Target& rhs);
 
 struct NodeLessThan {
   bool operator()(const Node* lhs, const Node* rhs) const;
@@ -120,8 +131,10 @@ class Adjacent {
 
 class Digraph {
  public:
+  Digraph()               = default;
   Digraph(const Digraph&) = delete;
   Digraph(Digraph&&)      = default;
+  Digraph& operator=(Digraph&&) = default;
 
   Node* AddNode(std::unique_ptr<Node>&& node) {
     auto* ret = nodes_.emplace(std::move(node)).first->get();
@@ -136,12 +149,11 @@ class Digraph {
 
   // TODO: check for directed acyclic.
  private:
-  Digraph() = default;
   std::set<std::unique_ptr<Node>, NodeLessThan> nodes_;
   Adjacent adj_;
-
-  friend class GraphBuilder;
 };
+
+std::ostream& operator<<(std::ostream& os, const Digraph& graph);
 
 class GraphBuilder {
  public:
@@ -176,9 +188,9 @@ class ProgramGraphBuilder final : public GraphBuilder {
   Digraph release() override { return std::move(graph_); }
 
  private:
-  void AddInstr(const _Instruction_* instr);
-  bool VarExists(const _Variable_* var) const { return var_map_.count(var); }
-  void AddVar(const _Variable_* var);
+  void AddInstr(const Instruction& instr);
+  bool VarExists(const Variable& var) const { return var_map_.count(var.get()); }
+  void AddVar(const Variable& var);
 
   int16_t cur_id_{-1};
   std::map<const _Variable_*, ProgramVar*> var_map_;
@@ -189,8 +201,10 @@ class PatternMatcher {
  public:
   using pattern_node_t = Node;
   using program_node_t = Node;
-  PatternMatcher(const Digraph& pattern, const Digraph& program);
-  std::vector<std::map<pattern_node_t const*, program_node_t const*>> DetectPatterns();
+  using pattern_map_t  = std::map<pattern_node_t const*, program_node_t const*>;
+  PatternMatcher()     = default;
+  void Init(const Digraph& pattern, const Digraph& program);
+  std::vector<pattern_map_t> DetectPatterns();
 
  private:
   class HitGroup {
@@ -214,5 +228,9 @@ class PatternMatcher {
   std::set<std::pair<Node const*, Node const*>, NodeLessThan> pattern_edges_;
   std::vector<HitGroup> groups_;
 };
+
+// TODO: rewrite the program efficiently
+const cinn::frontend::Instruction* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label);
+const cinn::frontend::Variable* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label);
 
 }  // namespace cinn::frontend::pass
