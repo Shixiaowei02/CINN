@@ -36,7 +36,9 @@ bool PatternVar::Tell(const Node* var) const {
   const auto* p_var = dynamic_cast<ProgramVar const*>(var);
   if (p_var) {
     for (const auto& teller : tellers_) {
-      ret = ret && teller(p_var->raw());
+      auto* raw = p_var->raw();
+      CHECK(raw);
+      ret = ret && teller(*raw);
     }
   } else {
     ret = false;
@@ -49,7 +51,9 @@ bool PatternInstr::Tell(const Node* instr) const {
   const auto* p_instr = dynamic_cast<ProgramInstr const*>(instr);
   if (p_instr) {
     for (const auto& teller : tellers_) {
-      ret = ret && teller(p_instr->raw());
+      auto* raw = p_instr->raw();
+      CHECK(raw);
+      ret = ret && teller(*raw);
     }
   } else {
     ret = false;

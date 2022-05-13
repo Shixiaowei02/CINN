@@ -51,10 +51,12 @@ class DotMergerPass : public ProgramPass {
 };
 
 Digraph DotMergerPass::GeneratePattern() {
+  auto has_2d_shape = [](const Variable& var) -> bool { return var->shape.size() == 2; };
+
   PatternBuilder builder;
-  auto* in_0     = builder.AddVar()->set_label("in_0");
-  auto* in_1     = builder.AddVar()->set_label("in_1");
-  auto* in_2     = builder.AddVar()->set_label("in_2");
+  auto* in_0     = builder.AddVar()->set_label("in_0")->Assert(has_2d_shape);
+  auto* in_1     = builder.AddVar()->set_label("in_1")->Assert(has_2d_shape);
+  auto* in_2     = builder.AddVar()->set_label("in_2")->Assert(has_2d_shape);
   auto* out_0    = builder.AddVar()->set_label("out_0");
   auto* out_1    = builder.AddVar()->set_label("out_1");
   auto* matmul_0 = builder.AddInstr("matmul", std::vector<PatternVar*>{in_0, in_1}, std::vector<PatternVar*>{out_0})

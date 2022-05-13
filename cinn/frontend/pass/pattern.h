@@ -68,16 +68,24 @@ class PatternVar final : public Node {
     Node::set_label(label);
     return this;
   }
+  PatternVar* Assert(const std::function<bool(const Variable&)>& teller) {
+    tellers_.emplace_back(teller);
+    return this;
+  }
 
  private:
   bool external_{false};
-  std::vector<std::function<bool(const Variable*)>> tellers_;
+  std::vector<std::function<bool(const Variable&)>> tellers_;
 };
 
 class PatternInstr final : public Node {
  public:
   PatternInstr(const char* type) : type_{type} {
-    tellers_.emplace_back([=](const Instruction* instr) -> bool { return instr->get()->op_type == type_; });
+    tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type_; });
+  }
+  PatternInstr* Assert(const std::function<bool(const Instruction&)>& teller) {
+    tellers_.emplace_back(teller);
+    return this;
   }
   const char* type() const { return type_; }
   PatternInstr* set_label(const char* label) {
@@ -89,7 +97,7 @@ class PatternInstr final : public Node {
 
  private:
   const char* type_{};
-  std::vector<std::function<bool(const Instruction*)>> tellers_;
+  std::vector<std::function<bool(const Instruction&)>> tellers_;
 };
 
 class Target {
