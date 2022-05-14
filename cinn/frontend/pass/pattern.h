@@ -43,13 +43,16 @@ class Node {
 
 std::ostream& operator<<(std::ostream& os, const Node& node);
 
+class Digraph;
+
 class ProgramVar final : public Node {
  public:
-  ProgramVar(const Variable& var) : var_{var} {}
+  ProgramVar(const Digraph& prog, const Variable& var) : prog_{&prog}, var_{var} {}
   const Variable* raw() const { return &var_; }
 
  private:
   Variable var_;
+  Digraph const* prog_{};
 };
 
 class ProgramInstr final : public Node {
@@ -68,22 +71,22 @@ class PatternVar final : public Node {
     Node::set_label(label);
     return this;
   }
-  PatternVar* Assert(const std::function<bool(const Variable&)>& teller) {
+  PatternVar* Assert(const std::function<bool(const ProgramVar&)>& teller) {
     tellers_.emplace_back(teller);
     return this;
   }
 
  private:
   bool external_{false};
-  std::vector<std::function<bool(const Variable&)>> tellers_;
+  std::vector<std::function<bool(const ProgramVar&)>> tellers_;
 };
 
 class PatternInstr final : public Node {
  public:
   PatternInstr(const char* type) : type_{type} {
-    tellers_.emplace_back([=](const Instruction& instr) -> bool { return instr->op_type == type_; });
+    tellers_.emplace_back([=](const ProgramInstr& instr) -> bool { return instr.raw()->get()->op_type == type_; });
   }
-  PatternInstr* Assert(const std::function<bool(const Instruction&)>& teller) {
+  PatternInstr* Assert(const std::function<bool(const ProgramInstr&)>& teller) {
     tellers_.emplace_back(teller);
     return this;
   }
@@ -97,7 +100,7 @@ class PatternInstr final : public Node {
 
  private:
   const char* type_{};
-  std::vector<std::function<bool(const Instruction&)>> tellers_;
+  std::vector<std::function<bool(const ProgramInstr&)>> tellers_;
 };
 
 class Target {

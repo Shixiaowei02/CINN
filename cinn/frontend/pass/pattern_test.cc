@@ -20,7 +20,7 @@
 namespace cinn::frontend::pass {
 
 TEST(Pattern, match) {
-  auto generate_src_pattern = []() -> Digraph {
+  auto generate_src_pattern = [] {
     PatternBuilder builder;
     auto* input_0  = builder.AddVar();
     auto* input_1  = builder.AddVar();
@@ -40,7 +40,7 @@ TEST(Pattern, match) {
     return graph;
   };
 
-  auto generate_program = []() -> Program {
+  auto generate_program = [] {
     NetBuilder builder("net_builder");
     auto a       = builder.CreateInput(Float(32), {1, 2}, "A");
     auto b       = builder.CreateInput(Float(32), {1, 2}, "B");

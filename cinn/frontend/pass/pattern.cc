@@ -36,9 +36,7 @@ bool PatternVar::Tell(const Node* var) const {
   const auto* p_var = dynamic_cast<ProgramVar const*>(var);
   if (p_var) {
     for (const auto& teller : tellers_) {
-      auto* raw = p_var->raw();
-      CHECK(raw);
-      ret = ret && teller(*raw);
+      ret = ret && teller(*p_var);
     }
   } else {
     ret = false;
@@ -51,9 +49,7 @@ bool PatternInstr::Tell(const Node* instr) const {
   const auto* p_instr = dynamic_cast<ProgramInstr const*>(instr);
   if (p_instr) {
     for (const auto& teller : tellers_) {
-      auto* raw = p_instr->raw();
-      CHECK(raw);
-      ret = ret && teller(*raw);
+      ret = ret && teller(*p_instr);
     }
   } else {
     ret = false;
@@ -156,7 +152,7 @@ void ProgramGraphBuilder::AddInstr(const Instruction& instr) {
 
 void ProgramGraphBuilder::AddVar(const Variable& var) {
   CHECK(!VarExists(var)) << "Repeated addition of variables is not allowed.";
-  auto p_var = std::make_unique<ProgramVar>(var);
+  auto p_var = std::make_unique<ProgramVar>(graph_, var);
   auto* raw  = p_var.get();
   p_var->set_id(++cur_id_);
   graph_.AddNode(std::move(p_var));
