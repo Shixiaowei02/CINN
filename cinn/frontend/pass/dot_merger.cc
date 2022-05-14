@@ -37,26 +37,37 @@ class DotMergerPass : public ProgramPass {
   }
 
  private:
-  Digraph GeneratePattern();
+  std::unique_ptr<Digraph> GeneratePattern();
   bool Match(Program* prog);
 
   // TODO: More general rewrite logic.
   void Rewrite(Program* prog, const std::unordered_set<std::string>& fetch_ids, const common::Target& target);
 
  private:
-  Digraph pattern_;
-  Digraph program_;
+  std::unique_ptr<Digraph> pattern_;
+  std::unique_ptr<Digraph> program_;
   PatternMatcher matcher_;
   std::vector<PatternMatcher::pattern_map_t> matches_;
 };
 
-Digraph DotMergerPass::GeneratePattern() {
-  auto has_2d_shape = [](const ProgramVar& var) -> bool { return var.raw()->get()->shape.size() == 2; };
+std::unique_ptr<Digraph> DotMergerPass::GeneratePattern() {
+  auto has_2d_shape = [](ProgramVar* var) -> bool { return var->raw()->get()->shape.size() == 2; };
+
+  // TODO: move it into the base class
+  auto is_input_of_matmul = [](ProgramVar* var) -> bool {
+    for (auto target : var->prog()->adj().GetTargets(var)) {
+      auto* prog = dynamic_cast<ProgramInstr*>(target.end());
+      if (prog && prog->raw()->get()->op_type == "matmul") {
+        return true;
+      }
+    }
+    return false;
+  };
 
   PatternBuilder builder;
-  auto* in_0     = builder.AddVar()->Assert(has_2d_shape)->set_label("in_0");
-  auto* in_1     = builder.AddVar()->Assert(has_2d_shape)->set_label("in_1");
-  auto* in_2     = builder.AddVar()->Assert(has_2d_shape)->set_label("in_2");
+  auto* in_0     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_0");
+  auto* in_1     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_1");
+  auto* in_2     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_2");
   auto* out_0    = builder.AddVar()->set_label("out_0");
   auto* out_1    = builder.AddVar()->set_label("out_1");
   auto* matmul_0 = builder.AddInstr("matmul", std::vector<PatternVar*>{in_0, in_1}, std::vector<PatternVar*>{out_0})
@@ -69,7 +80,7 @@ Digraph DotMergerPass::GeneratePattern() {
 bool DotMergerPass::Match(Program* prog) {
   program_ = std::move(ProgramGraphBuilder(*prog).release());
   PatternMatcher matcher;
-  matcher.Init(pattern_, program_);
+  matcher.Init(*pattern_, *program_);
   matches_ = std::move(matcher.DetectPatterns());
   VLOG(5) << "matches size " << matches_.size();
   return matches_.size();
