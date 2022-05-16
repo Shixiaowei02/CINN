@@ -29,6 +29,7 @@ void ProgramPass::Apply(Program* prog,
     fpass.push_back(pass);
   }
   for (const auto* pass : fpass) {
+    LOG(INFO) << "Running pass : " << pass->name_;
     pass->ApplyImpl(prog, fetch_ids, target);
   }
 }

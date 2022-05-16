@@ -151,9 +151,47 @@ int input_idx(const Instruction& instr, const Variable& var) {
   return res;
 }
 
+// update the interfaces of the graph to use priority traversal.
+void union_find(std::vector<std::pair<Instruction, bool>>& instrs, const _Instruction_* instr) {
+  std::set<_Variable_*> vars{};
+  for (auto& input : instr->inputs) {
+    vars.emplace(input.get());
+  }
+  while (true) {
+    uint64_t before_size = vars.size();
+    for (auto& instr : instrs) {
+      for (auto& output : instr.first->outputs) {
+        if (vars.count(output.get()) != 0) {
+          // LOG(INFO) << "find: " << instr.first->op_type;
+          instr.second = true;
+          break;
+        }
+        // LOG(INFO) << "not-find: " << instr.first->op_type;
+      }
+      if (instr.second) {
+        for (auto& input : instr.first->inputs) {
+          vars.emplace(input.get());
+        }
+      }
+    }
+    if (vars.size() == before_size) {
+      break;
+    }
+  }
+}
+
 void DotMergerPass::Rewrite(Program* prog,
                             const std::unordered_set<std::string>& fetch_ids,
                             const common::Target& target) {
+  {
+    std::stringstream ss;
+    ss << *prog;
+    std::string myString = ss.str();
+
+    std::ofstream file("program_before.txt", std::ofstream::out | std::ofstream::trunc);
+    file << myString;
+  }
+
   for (const auto& match : matches_) {
     const Variable& in_0  = *GetMatchedVar(match, "in_0");
     const Variable& in_1  = *GetMatchedVar(match, "in_1");
@@ -191,24 +229,51 @@ void DotMergerPass::Rewrite(Program* prog,
                                              GetMatchedInstr(match, "matmul_1")->get()};
 
     NetBuilder builder("dot_merger_builder");
-    size_t cnt{0};
     Variable slice0_out;
     Variable slice1_out;
+
+    auto insert_pattern = [&]() {
+      Variable matmul_out;
+      auto concat_out = builder.Concat({in_1, in_2}, axis);
+      if (!lhs) {
+        matmul_out = builder.Matmul(concat_out, in_0);
+      } else {
+        matmul_out = builder.Matmul(in_0, concat_out);
+      }
+      std::cout << "in_1->shape[axis] = " << in_1->shape[axis] << ", " << in_2->shape[axis] << '\n';
+      slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in_1->shape[axis]});
+      slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
+    };
+
+    bool stat{false};
+    std::vector<std::pair<Instruction, bool>> interval;
     for (size_t i = 0; i < prog->size(); ++i) {
       auto& instr = (*prog)[i];
-      if (nodes_to_remove.find(instr.get()) != nodes_to_remove.end()) {
-        if (cnt++ == 0) {
-          Variable matmul_out;
-          auto concat_out = builder.Concat({in_1, in_2}, axis);
-          if (!lhs) {
-            matmul_out = builder.Matmul(concat_out, in_0);
-          } else {
-            matmul_out = builder.Matmul(in_0, concat_out);
+      auto it     = nodes_to_remove.find(instr.get());
+      if (it != nodes_to_remove.end()) {
+        LOG(INFO) << "insert = " << in_0->id;
+        if (!stat) {
+          stat = true;
+          nodes_to_remove.erase(it);
+        } else {
+          stat = false;
+          union_find(interval, *it);
+          for (auto& i : interval) {
+            if (i.second) {
+              builder.AppendInstruction(i.first);
+            }
           }
-          std::cout << "in_1->shape[axis] = " << in_1->shape[axis] << ", " << in_2->shape[axis] << '\n';
-          slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in_1->shape[axis]});
-          slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
+          insert_pattern();
+          for (auto& i : interval) {
+            if (!i.second) {
+              builder.AppendInstruction(i.first);
+            }
+          }
+          LOG(INFO) << "insert here!";
         }
+      } else if (stat) {
+        LOG(INFO) << "interval << " << instr->op_type;
+        interval.emplace_back(instr, false);
       } else {
         builder.AppendInstruction(instr);
       }
@@ -218,23 +283,29 @@ void DotMergerPass::Rewrite(Program* prog,
       for (auto& var : instr->inputs) {
         if (var.get() == out_0.get()) {
           var = slice0_out;
+          CHECK(var.get() == slice0_out.get());
         }
         if (var.get() == out_1.get()) {
           var = slice1_out;
+          CHECK(var.get() == slice1_out.get());
         }
       }
     }
     auto program = builder.Build();
     *prog        = std::move(program);
+    // break;
   }
   LOG(INFO) << "program!!";
 
-  std::stringstream ss;
-  ss << *prog;
-  std::string myString = ss.str();
+  {
+    std::stringstream ss;
+    ss << *prog;
+    std::string myString = ss.str();
 
-  std::ofstream file("program.txt");
-  file << myString;
+    std::ofstream file("program.txt", std::ofstream::out | std::ofstream::trunc);
+    file << myString;
+  }
+  LOG(INFO) << "end of pass";
 }
 
 }  // namespace cinn::frontend::pass
