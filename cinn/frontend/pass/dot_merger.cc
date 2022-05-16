@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <fstream>
 #include <iostream>
 
 #include "cinn/frontend/cinn_builder.h"
@@ -140,6 +141,16 @@ bool print_matmul(const Instruction& matmul_instr) {
   return false;
 }
 
+int input_idx(const Instruction& instr, const Variable& var) {
+  int res = -1;
+  for (size_t i = 0; i < instr->inputs.size(); ++i) {
+    if (instr->inputs[i].get() == var.get()) {
+      res = i;
+    }
+  }
+  return res;
+}
+
 void DotMergerPass::Rewrite(Program* prog,
                             const std::unordered_set<std::string>& fetch_ids,
                             const common::Target& target) {
@@ -150,22 +161,31 @@ void DotMergerPass::Rewrite(Program* prog,
     const Variable& out_0 = *GetMatchedVar(match, "out_0");
     const Variable& out_1 = *GetMatchedVar(match, "out_1");
 
-    int axis = 1;
+    const auto& matmul_0 = *GetMatchedInstr(match, "matmul_0");
+    const auto& matmul_1 = *GetMatchedInstr(match, "matmul_1");
 
+    int idx00 = input_idx(matmul_0, in_0);
+    int idx01 = input_idx(matmul_1, in_0);
+    int idx1  = input_idx(matmul_0, in_1);
+    int idx2  = input_idx(matmul_1, in_2);
+
+    bool lhs{true};
+    int axis{1};
+    if (idx00 != idx01 || idx1 != idx2) {
+      continue;
+    } else if (idx00 == 1) {
+      lhs  = false;
+      axis = 0;
+    }
+
+    std::cout << "[[" << idx00 << ", " << idx01 << ", " << idx1 << ", " << idx2 << " ]]\n";
+
+    std::cout << "axis = " << axis << '\n';
     print_shape("in_0", in_0);
     print_shape("in_1", in_1);
     print_shape("in_2", in_2);
     print_shape("out_0", out_0);
     print_shape("out_1", out_1);
-
-    bool rhs = false;
-    if (in_0->shape[1] == out_0->shape[1] && out_0->shape[1] == out_1->shape[1]) {
-      rhs  = true;
-      axis = 0;
-    } else if (!(in_0->shape[0] == out_0->shape[0] && out_0->shape[0] == out_1->shape[0])) {
-      LOG(INFO) << "skip!";
-      continue;
-    }
 
     std::set<_Instruction_*> nodes_to_remove{GetMatchedInstr(match, "matmul_0")->get(),
                                              GetMatchedInstr(match, "matmul_1")->get()};
@@ -177,14 +197,15 @@ void DotMergerPass::Rewrite(Program* prog,
     for (size_t i = 0; i < prog->size(); ++i) {
       auto& instr = (*prog)[i];
       if (nodes_to_remove.find(instr.get()) != nodes_to_remove.end()) {
-        if (++cnt == nodes_to_remove.size()) {
+        if (cnt++ == 0) {
           Variable matmul_out;
           auto concat_out = builder.Concat({in_1, in_2}, axis);
-          if (rhs) {
+          if (!lhs) {
             matmul_out = builder.Matmul(concat_out, in_0);
           } else {
             matmul_out = builder.Matmul(in_0, concat_out);
           }
+          std::cout << "in_1->shape[axis] = " << in_1->shape[axis] << ", " << in_2->shape[axis] << '\n';
           slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in_1->shape[axis]});
           slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
         }
@@ -206,6 +227,14 @@ void DotMergerPass::Rewrite(Program* prog,
     auto program = builder.Build();
     *prog        = std::move(program);
   }
+  LOG(INFO) << "program!!";
+
+  std::stringstream ss;
+  ss << *prog;
+  std::string myString = ss.str();
+
+  std::ofstream file("program.txt");
+  file << myString;
 }
 
 }  // namespace cinn::frontend::pass
