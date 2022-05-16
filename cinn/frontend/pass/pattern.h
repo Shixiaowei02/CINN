@@ -76,9 +76,10 @@ class PatternVar final : public Node {
     tellers_.emplace_back(teller);
     return this;
   }
+  bool external() const { return external_; }
 
  private:
-  bool external_{false};
+  bool external_{true};
   std::vector<std::function<bool(ProgramVar*)>> tellers_;
 };
 
@@ -262,7 +263,6 @@ class PatternMatcher {
   void Init(const Digraph& pattern, const Digraph& program);
   std::vector<pattern_map_t> DetectPatterns();
 
- private:
   class HitGroup {
    public:
     const std::map<pattern_node_t const*, program_node_t const*, NodeLessThan>& roles() const { return roles_; }
@@ -271,12 +271,15 @@ class PatternMatcher {
       nodes_.insert(node);
     }
     bool Match(program_node_t const* node, pattern_node_t const* pat) const;
+    bool operator<(const HitGroup& rhs) const { return roles_ < rhs.roles_; }
+    friend std::ostream& operator<<(std::ostream& os, const HitGroup& group);
 
    private:
     std::map<pattern_node_t const*, program_node_t const*, NodeLessThan> roles_;
-    std::set<program_node_t const*> nodes_;
+    std::set<program_node_t const*, NodeLessThan> nodes_;
   };
 
+ private:
   void NodeMatch();
   Digraph const* program_{};
   Digraph const* pattern_{};

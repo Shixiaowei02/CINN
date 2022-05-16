@@ -50,30 +50,57 @@ class DotMergerPass : public ProgramPass {
   std::vector<PatternMatcher::pattern_map_t> matches_;
 };
 
+template <typename T>
+T GetAttr(const Instruction* instr, const char* attr, T default_value) {
+  auto& attrs = instr->get()->attrs;
+  if (attrs.count(attr)) {
+    return absl::get<T>(attrs.at(attr));
+  } else {
+    return default_value;
+  }
+}
+
 std::unique_ptr<Digraph> DotMergerPass::GeneratePattern() {
   auto has_2d_shape = [](ProgramVar* var) -> bool { return var->raw()->get()->shape.size() == 2; };
 
   // TODO: move it into the base class
-  auto is_input_of_matmul = [](ProgramVar* var) -> bool {
+  auto in_matmul = [](ProgramVar* var) -> bool {
     for (auto target : var->prog()->adj().GetTargets(var)) {
       auto* prog = dynamic_cast<ProgramInstr*>(target.end());
-      if (prog && prog->raw()->get()->op_type == "matmul") {
+      if (prog && prog->raw()->get()->op_type == "matmul" && !GetAttr(prog->raw(), "trans_a", false) &&
+          !GetAttr(prog->raw(), "trans_b", false)) {
         return true;
       }
     }
     return false;
   };
+  auto out_matmul = [](ProgramVar* var) -> bool {
+    bool res = false;
+    for (auto edge : var->prog()->adj().edges()) {
+      auto* first = dynamic_cast<ProgramInstr*>(edge.first);
+      if (first && first->raw()->get()->op_type == "matmul" && edge.second == var) {
+        return true;
+      }
+    }
+    return false;
+  };
+  auto no_trans = [](ProgramInstr* instr) -> bool {
+    bool res = false;
+    return !GetAttr(instr->raw(), "trans_a", false) && !GetAttr(instr->raw(), "trans_b", false);
+  };
 
   PatternBuilder builder;
-  auto* in_0     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_0");
-  auto* in_1     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_1");
-  auto* in_2     = builder.AddVar()->Assert(has_2d_shape)->Assert(is_input_of_matmul)->set_label("in_2");
-  auto* out_0    = builder.AddVar()->set_label("out_0");
-  auto* out_1    = builder.AddVar()->set_label("out_1");
+  auto* in_0     = builder.AddVar()->Assert(has_2d_shape)->Assert(in_matmul)->set_label("in_0");
+  auto* in_1     = builder.AddVar()->Assert(has_2d_shape)->Assert(in_matmul)->set_label("in_1");
+  auto* in_2     = builder.AddVar()->Assert(has_2d_shape)->Assert(in_matmul)->set_label("in_2");
+  auto* out_0    = builder.AddVar()->Assert(has_2d_shape)->Assert(out_matmul)->set_label("out_0");
+  auto* out_1    = builder.AddVar()->Assert(has_2d_shape)->Assert(out_matmul)->set_label("out_1");
   auto* matmul_0 = builder.AddInstr("matmul", std::vector<PatternVar*>{in_0, in_1}, std::vector<PatternVar*>{out_0})
-                       ->set_label("matmul_0");
+                       ->set_label("matmul_0")
+                       ->Assert(no_trans);
   auto* matmul_1 = builder.AddInstr("matmul", std::vector<PatternVar*>{in_0, in_2}, std::vector<PatternVar*>{out_1})
-                       ->set_label("matmul_1");
+                       ->set_label("matmul_1")
+                       ->Assert(no_trans);
   return builder.release();
 };
 
@@ -86,6 +113,33 @@ bool DotMergerPass::Match(Program* prog) {
   return matches_.size();
 }
 
+void print_shape(const std::string& str, const Variable& var) {
+  std::cout << str << ' ';
+  for (int i : var->shape) {
+    std::cout << i << ", ";
+  }
+  std::cout << '\n';
+}
+
+bool print_matmul(const Instruction& matmul_instr) {
+  auto& attrs = matmul_instr->attrs;
+  bool trans_a{}, trans_b{}, trans_out{};
+  if (attrs.count("trans_a")) {
+    trans_a = absl::get<bool>(attrs.at("trans_a"));
+  }
+  if (attrs.count("trans_b")) {
+    trans_b = absl::get<bool>(attrs.at("trans_b"));
+  }
+  if (attrs.count("trans_out")) {
+    trans_out = absl::get<bool>(attrs.at("trans_out"));
+  }
+  std::cout << trans_a << ", " << trans_b << ", " << trans_out << '\n';
+  if (!trans_a && !trans_b) {
+    return true;
+  }
+  return false;
+}
+
 void DotMergerPass::Rewrite(Program* prog,
                             const std::unordered_set<std::string>& fetch_ids,
                             const common::Target& target) {
@@ -96,12 +150,21 @@ void DotMergerPass::Rewrite(Program* prog,
     const Variable& out_0 = *GetMatchedVar(match, "out_0");
     const Variable& out_1 = *GetMatchedVar(match, "out_1");
 
-    // TODO: support more shapes.
-    auto& in1_shape = in_1->shape;
-    auto& in2_shape = in_2->shape;
-    int axis        = 0;
-    if (in_1->shape[0] == in_2->shape[0]) {
-      axis = 1;
+    int axis = 1;
+
+    print_shape("in_0", in_0);
+    print_shape("in_1", in_1);
+    print_shape("in_2", in_2);
+    print_shape("out_0", out_0);
+    print_shape("out_1", out_1);
+
+    bool rhs = false;
+    if (in_0->shape[1] == out_0->shape[1] && out_0->shape[1] == out_1->shape[1]) {
+      rhs  = true;
+      axis = 0;
+    } else if (!(in_0->shape[0] == out_0->shape[0] && out_0->shape[0] == out_1->shape[0])) {
+      LOG(INFO) << "skip!";
+      continue;
     }
 
     std::set<_Instruction_*> nodes_to_remove{GetMatchedInstr(match, "matmul_0")->get(),
@@ -117,13 +180,13 @@ void DotMergerPass::Rewrite(Program* prog,
         if (++cnt == nodes_to_remove.size()) {
           Variable matmul_out;
           auto concat_out = builder.Concat({in_1, in_2}, axis);
-          if (axis == 1) {
-            matmul_out = builder.Matmul(in_0, concat_out);
-          } else {
+          if (rhs) {
             matmul_out = builder.Matmul(concat_out, in_0);
+          } else {
+            matmul_out = builder.Matmul(in_0, concat_out);
           }
-          slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in1_shape[axis]});
-          slice1_out = builder.Slice(matmul_out, {axis}, {in1_shape[axis]}, {in1_shape[axis] + in2_shape[axis]});
+          slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in_1->shape[axis]});
+          slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
         }
       } else {
         builder.AppendInstruction(instr);

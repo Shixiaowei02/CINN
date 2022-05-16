@@ -122,6 +122,13 @@ std::ostream& operator<<(std::ostream& os, const Digraph& graph) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const PatternMatcher::HitGroup& group) {
+  for (auto& role : group.roles_) {
+    os << "pat: " << *role.first << ", prog: " << *role.second << '\n';
+  }
+  return os;
+}
+
 ProgramGraphBuilder::ProgramGraphBuilder(const Program& program) {
   for (size_t i = 0; i < program.size(); ++i) {
     AddInstr(program[i]);
@@ -184,12 +191,18 @@ std::vector<PatternMatcher::pattern_map_t> PatternMatcher::DetectPatterns() {
   }
   int step{0};
   for (const auto& edge : pattern_edges_) {
-    auto& pre_groups = bi_records[step % 2];
+    std::set<HitGroup> pre_groups(bi_records[step % 2].begin(), bi_records[step % 2].end());
+    VLOG(5) << "========";
+    for (auto& group : pre_groups) {
+      VLOG(5) << group << "\n";
+    }
+    VLOG(5) << "========";
     auto& cur_groups = bi_records[1 - (step++ % 2)];
     cur_groups.clear();
     for (auto* source : pdnodes2nodes_[edge.first]) {
       for (auto* target : pdnodes2nodes_[edge.second]) {
-        for (const auto& group : pre_groups) {
+        size_t t = 0;
+        for (auto& group : pre_groups) {
           if (program_->adj().HasEdge(source, target)) {
             HitGroup new_group = group;
             bool flag          = new_group.Match(source, edge.first) && new_group.Match(target, edge.second);
@@ -210,7 +223,8 @@ std::vector<PatternMatcher::pattern_map_t> PatternMatcher::DetectPatterns() {
     std::map<pattern_node_t const*, program_node_t const*> subgraph;
     bool overlapped{false};
     for (auto& role : group.roles()) {
-      if (visited.find(role.second) == visited.end()) {
+      auto* var = dynamic_cast<PatternVar const*>(role.first);
+      if ((var && var->external()) || visited.find(role.second) == visited.end()) {
         subgraph.emplace(role.first, role.second);
       } else {
         overlapped = true;
@@ -227,6 +241,7 @@ std::vector<PatternMatcher::pattern_map_t> PatternMatcher::DetectPatterns() {
       res.emplace_back(std::move(subgraph));
     }
   }
+  VLOG(5) << "res.size = " << res.size();
   return res;
 }
 

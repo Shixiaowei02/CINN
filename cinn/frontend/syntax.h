@@ -65,7 +65,7 @@ struct Variable : public common::Shared<_Variable_> {
 
   void set_id(const std::string& id) { operator->()->id = id; }
   void set_const(bool is_const) { operator->()->is_const = is_const; }
-  bool is_const() { return operator->()->is_const; }
+  bool is_const() const { return operator->()->is_const; }
 
   _Variable_* operator->() { return get(); }
   const _Variable_* operator->() const { return get(); }

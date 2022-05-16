@@ -133,9 +133,9 @@ class BaseBuilder {
     return FillConstant(shape, static_cast<float>(value), name, common::Type2Str(common::type_of<T>()), force_cpu);
   }
 
- protected:
   void InferShape(Instruction instr) const;
 
+ protected:
   Variable UnaryOp(const std::string& op_type, const Variable& operand);
 
   Variable BinaryOp(const std::string& op_type, const Variable& lhs, const Variable& rhs);
