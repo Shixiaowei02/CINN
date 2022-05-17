@@ -231,8 +231,10 @@ void DotMergerPass::Rewrite(Program* prog,
     NetBuilder builder("dot_merger_builder");
     Variable slice0_out;
     Variable slice1_out;
+    bool rewrited{false};
 
     auto insert_pattern = [&]() {
+      rewrited = true;
       Variable matmul_out;
       auto concat_out = builder.Concat({in_1, in_2}, axis);
       if (!lhs) {
@@ -245,54 +247,41 @@ void DotMergerPass::Rewrite(Program* prog,
       slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
     };
 
-    bool stat{false};
+    int first_loc{-1};
     std::vector<std::pair<Instruction, bool>> interval;
     for (size_t i = 0; i < prog->size(); ++i) {
       auto& instr = (*prog)[i];
       auto it     = nodes_to_remove.find(instr.get());
       if (it != nodes_to_remove.end()) {
-        LOG(INFO) << "insert = " << in_0->id;
-        if (!stat) {
-          stat = true;
-          nodes_to_remove.erase(it);
-        } else {
-          stat = false;
-          union_find(interval, *it);
-          for (auto& i : interval) {
-            if (i.second) {
-              builder.AppendInstruction(i.first);
-            }
-          }
+        nodes_to_remove.erase(it);
+        if (first_loc == -1) {
+          first_loc = i;
+        } else if (i == first_loc + 1) {
+          LOG(INFO) << "here!";
           insert_pattern();
-          for (auto& i : interval) {
-            if (!i.second) {
-              builder.AppendInstruction(i.first);
-            }
+        } else {
+          LOG(INFO) << "not!!! " << i - first_loc;
+        }
+      }
+    }
+    if (rewrited) {
+      for (size_t i = 0; i < prog->size(); ++i) {
+        auto& instr = (*prog)[i];
+        for (auto& var : instr->inputs) {
+          if (var.get() == out_0.get()) {
+            var = slice0_out;
+            CHECK(var.get() == slice0_out.get());
           }
-          LOG(INFO) << "insert here!";
-        }
-      } else if (stat) {
-        LOG(INFO) << "interval << " << instr->op_type;
-        interval.emplace_back(instr, false);
-      } else {
-        builder.AppendInstruction(instr);
-      }
-    }
-    for (size_t i = 0; i < prog->size(); ++i) {
-      auto& instr = (*prog)[i];
-      for (auto& var : instr->inputs) {
-        if (var.get() == out_0.get()) {
-          var = slice0_out;
-          CHECK(var.get() == slice0_out.get());
-        }
-        if (var.get() == out_1.get()) {
-          var = slice1_out;
-          CHECK(var.get() == slice1_out.get());
+          if (var.get() == out_1.get()) {
+            var = slice1_out;
+            CHECK(var.get() == slice1_out.get());
+          }
         }
       }
+      auto program = builder.Build();
+      *prog        = std::move(program);
     }
-    auto program = builder.Build();
-    *prog        = std::move(program);
+
     // break;
   }
   LOG(INFO) << "program!!";
