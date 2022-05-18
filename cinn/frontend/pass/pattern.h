@@ -175,6 +175,7 @@ class Adjacent {
       adj_[start] = {};
     }
   }
+  const std::set<Target>& targets(Node* start) const { return adj_.at(start); }
   void Add(Node* start, Node* end, int16_t idx) { adj_[start].emplace(Target(end, idx)); }
   bool HasEdge(Node* start, Node* end) const;
   EdgeIterable edges() const { return EdgeIterable(*this); }
@@ -209,6 +210,33 @@ class Digraph {
  private:
   std::set<std::unique_ptr<Node>, NodeLessThan> nodes_;
   Adjacent adj_;
+};
+
+class DepthFirstSearch {
+ public:
+  DepthFirstSearch(const Digraph& graph) : g_{&graph} {}
+  const std::set<Node const*, NodeLessThan>& operator()(Node const* start) {
+    marked_.clear();
+    dfs(start);
+    return marked_;
+  }
+  bool accessible(Node const* start, Node const* end) {
+    marked_.clear();
+    dfs(start);
+    return marked_.count(end);
+  }
+
+ private:
+  void dfs(Node const* start) {
+    marked_.emplace(start);
+    for (auto& t : g_->adj().targets(const_cast<Node*>(start))) {
+      if (!marked_.count(t.end())) {
+        dfs(t.end());
+      }
+    }
+  }
+  const Digraph* g_;
+  std::set<Node const*, NodeLessThan> marked_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Digraph& graph);
@@ -289,7 +317,7 @@ class PatternMatcher {
 };
 
 // TODO: rewrite the program efficiently
-const cinn::frontend::Instruction* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label);
-const cinn::frontend::Variable* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label);
+ProgramInstr const* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label);
+ProgramVar const* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label);
 
 }  // namespace cinn::frontend::pass

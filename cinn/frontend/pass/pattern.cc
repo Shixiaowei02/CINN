@@ -265,25 +265,23 @@ void PatternMatcher::NodeMatch() {
   }
 }
 
-const cinn::frontend::Instruction* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label) {
+ProgramInstr const* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label) {
   for (auto& match : matches) {
     if (!std::strcmp(label, match.first->label())) {
       const auto* program_node = dynamic_cast<ProgramInstr const*>(match.second);
-      if (program_node) {
-        return program_node->raw();
-      }
+      CHECK(program_node);
+      return program_node;
     }
   }
   return {};
 }
 
-const cinn::frontend::Variable* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label) {
+ProgramVar const* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label) {
   for (auto& match : matches) {
     if (!std::strcmp(label, match.first->label())) {
       const auto* var_node = dynamic_cast<ProgramVar const*>(match.second);
-      if (var_node) {
-        return var_node->raw();
-      }
+      CHECK(var_node);
+      return var_node;
     }
   }
   return {};

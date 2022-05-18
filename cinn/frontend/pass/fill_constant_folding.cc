@@ -14,6 +14,7 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <unordered_set>
@@ -134,6 +135,14 @@ class FillConstantFoldingPass : public ProgramPass {
       builder.AppendInstruction((*program)[i]);
     }
     *program = builder.Build();
+    {
+      std::stringstream ss;
+      ss << *program;
+      std::string myString = ss.str();
+
+      std::ofstream file("fill_constant_folding.txt", std::ofstream::out | std::ofstream::trunc);
+      file << myString;
+    }
   }
 
  private:
