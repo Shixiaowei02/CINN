@@ -36,7 +36,7 @@ TEST(Pattern, match) {
 
     std::unique_ptr<Digraph> graph = builder.release();
     CHECK_EQ(graph->nodes().size(), 7u);
-    CHECK_EQ(graph->adj().size(), 5u);
+    CHECK_EQ(graph->adj().size(), 7u);
     return graph;
   };
 
