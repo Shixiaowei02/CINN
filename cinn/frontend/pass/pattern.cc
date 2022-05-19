@@ -265,7 +265,7 @@ void PatternMatcher::NodeMatch() {
   }
 }
 
-ProgramInstr const* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label) {
+ProgramInstr const* get_mapped_instr(const PatternMatcher::pattern_map_t& matches, const char* label) {
   for (auto& match : matches) {
     if (!std::strcmp(label, match.first->label())) {
       const auto* program_node = dynamic_cast<ProgramInstr const*>(match.second);
@@ -276,7 +276,7 @@ ProgramInstr const* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches
   return {};
 }
 
-ProgramVar const* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label) {
+ProgramVar const* get_mapped_var(const PatternMatcher::pattern_map_t& matches, const char* label) {
   for (auto& match : matches) {
     if (!std::strcmp(label, match.first->label())) {
       const auto* var_node = dynamic_cast<ProgramVar const*>(match.second);

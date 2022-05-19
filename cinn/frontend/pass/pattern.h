@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <array>
 #include <memory>
 #include <set>
 
@@ -317,7 +316,7 @@ class PatternMatcher {
 };
 
 // TODO: rewrite the program efficiently
-ProgramInstr const* GetMatchedInstr(const PatternMatcher::pattern_map_t& matches, const char* label);
-ProgramVar const* GetMatchedVar(const PatternMatcher::pattern_map_t& matches, const char* label);
+ProgramInstr const* get_mapped_instr(const PatternMatcher::pattern_map_t& matches, const char* label);
+ProgramVar const* get_mapped_var(const PatternMatcher::pattern_map_t& matches, const char* label);
 
 }  // namespace cinn::frontend::pass

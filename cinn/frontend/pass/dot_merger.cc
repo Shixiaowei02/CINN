@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <iostream>
-
 #include "cinn/frontend/cinn_builder.h"
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/pass/pattern.h"
@@ -135,31 +132,30 @@ void DotMergerPass::Rewrite(Program* prog,
                             const std::unordered_set<std::string>& fetch_ids,
                             const common::Target& target) {
   for (const auto& match : matches_) {
-    const Variable& in_0  = *GetMatchedVar(match, "in_0")->raw();
-    const Variable& in_1  = *GetMatchedVar(match, "in_1")->raw();
-    const Variable& in_2  = *GetMatchedVar(match, "in_2")->raw();
-    const Variable& out_0 = *GetMatchedVar(match, "out_0")->raw();
-    const Variable& out_1 = *GetMatchedVar(match, "out_1")->raw();
-    const auto& matmul_0  = *GetMatchedInstr(match, "matmul_0")->raw();
-    const auto& matmul_1  = *GetMatchedInstr(match, "matmul_1")->raw();
+    const auto& in0     = *get_mapped_var(match, "in_0")->raw();
+    const auto& in1     = *get_mapped_var(match, "in_1")->raw();
+    const auto& in2     = *get_mapped_var(match, "in_2")->raw();
+    const auto& out0    = *get_mapped_var(match, "out_0")->raw();
+    const auto& out1    = *get_mapped_var(match, "out_1")->raw();
+    const auto& matmul0 = *get_mapped_instr(match, "matmul_0")->raw();
+    const auto& matmul1 = *get_mapped_instr(match, "matmul_1")->raw();
 
     DepthFirstSearch dfs(*program_);
-    if (dfs.accessible(GetMatchedVar(match, "out_0"), GetMatchedVar(match, "in_2")) ||
-        dfs.accessible(GetMatchedVar(match, "out_1"), GetMatchedVar(match, "in_1"))) {
+    if (dfs.accessible(get_mapped_var(match, "out_0"), get_mapped_var(match, "in_2")) ||
+        dfs.accessible(get_mapped_var(match, "out_1"), get_mapped_var(match, "in_1"))) {
       continue;
     }
 
     bool lhs{true};
     int axis{1};
-    if (in_idx(matmul_0, in_0) != in_idx(matmul_1, in_0) || in_idx(matmul_0, in_1) != in_idx(matmul_1, in_2)) {
+    if (in_idx(matmul0, in0) != in_idx(matmul1, in0) || in_idx(matmul0, in1) != in_idx(matmul1, in2)) {
       continue;
-    } else if (in_idx(matmul_0, in_0) == 1) {
+    } else if (in_idx(matmul0, in0) == 1) {
       lhs  = false;
       axis = 0;
     }
 
-    std::set<_Instruction_*> nodes_to_remove{GetMatchedInstr(match, "matmul_0")->raw()->get(),
-                                             GetMatchedInstr(match, "matmul_1")->raw()->get()};
+    std::set<_Instruction_*> nodes_to_remove{matmul0.get(), matmul1.get()};
 
     NetBuilder builder("dot_merger_builder");
     Variable slice0_out;
@@ -170,14 +166,14 @@ void DotMergerPass::Rewrite(Program* prog,
       if (nodes_to_remove.find(instr.get()) != nodes_to_remove.end()) {
         if (++cnt == nodes_to_remove.size()) {
           Variable matmul_out;
-          auto concat_out = builder.Concat({in_1, in_2}, axis);
+          auto concat_out = builder.Concat({in1, in2}, axis);
           if (!lhs) {
-            matmul_out = builder.Matmul(concat_out, in_0);
+            matmul_out = builder.Matmul(concat_out, in0);
           } else {
-            matmul_out = builder.Matmul(in_0, concat_out);
+            matmul_out = builder.Matmul(in0, concat_out);
           }
-          slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in_1->shape[axis]});
-          slice1_out = builder.Slice(matmul_out, {axis}, {in_1->shape[axis]}, {in_1->shape[axis] + in_2->shape[axis]});
+          slice0_out = builder.Slice(matmul_out, {axis}, {0}, {in1->shape[axis]});
+          slice1_out = builder.Slice(matmul_out, {axis}, {in1->shape[axis]}, {in1->shape[axis] + in2->shape[axis]});
         }
       } else {
         builder.AppendInstruction(instr);
@@ -186,10 +182,10 @@ void DotMergerPass::Rewrite(Program* prog,
     for (size_t i = 0; i < prog->size(); ++i) {
       auto& instr = (*prog)[i];
       for (auto& var : instr->inputs) {
-        if (var.get() == out_0.get()) {
+        if (var.get() == out0.get()) {
           var = slice0_out;
         }
-        if (var.get() == out_1.get()) {
+        if (var.get() == out1.get()) {
           var = slice1_out;
         }
       }
