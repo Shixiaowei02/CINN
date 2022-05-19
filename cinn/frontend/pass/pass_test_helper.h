@@ -38,6 +38,7 @@
 #include "cinn/hlir/framework/tensor.h"
 #include "cinn/hlir/op/use_ops.h"
 #include "cinn/hlir/pass/use_pass.h"
+#include "cinn/utils/timer.h"
 
 DECLARE_bool(cinn_use_new_fusion_pass);
 
@@ -128,45 +129,64 @@ void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   runtime_program->Execute();
 }
 
+struct ProfileConfig {
+  size_t repeats{1};
+};
+
 std::vector<float> RunProgram(const Program& program,
                               const common::Target& target,
                               const std::vector<std::string>& input_ids,
                               const std::vector<std::string>& output_ids,
-                              int seed          = -1,
-                              bool print_tensor = false) {
+                              int seed                    = -1,
+                              bool print_tensor           = false,
+                              ProfileConfig const* config = nullptr) {
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   auto scope = hlir::framework::BuildScope(target, graph);
-  for (auto& input_id : input_ids) {
-    scope->Var<hlir::framework::Tensor>(input_id);
-    auto input_tensor = scope->GetTensor(input_id);
-    SetRandData(input_tensor, target, seed);
-    if (print_tensor) {
-      auto tensor_data = GetTensorData(input_tensor, target);
-      if (input_tensor->shape().data().size() == 2) {
-        PrintMatrix(tensor_data, 1, input_tensor->shape().data()[0], input_tensor->shape().data()[1]);
-      } else if (input_tensor->shape().data().size() == 3) {
-        PrintMatrix(tensor_data,
-                    input_tensor->shape().data()[0],
-                    input_tensor->shape().data()[1],
-                    input_tensor->shape().data()[2]);
+  std::vector<float> output_data;
+
+  cinn::utils::Timer timer;
+  size_t repeats{1};
+  if (config) {
+    repeats = config->repeats;
+  }
+
+  for (size_t i = 0; i < repeats; ++i) {
+    timer.Start();
+    for (auto& input_id : input_ids) {
+      scope->Var<hlir::framework::Tensor>(input_id);
+      auto input_tensor = scope->GetTensor(input_id);
+      SetRandData(input_tensor, target, seed);
+      if (print_tensor) {
+        auto tensor_data = GetTensorData(input_tensor, target);
+        if (input_tensor->shape().data().size() == 2) {
+          PrintMatrix(tensor_data, 1, input_tensor->shape().data()[0], input_tensor->shape().data()[1]);
+        } else if (input_tensor->shape().data().size() == 3) {
+          PrintMatrix(tensor_data,
+                      input_tensor->shape().data()[0],
+                      input_tensor->shape().data()[1],
+                      input_tensor->shape().data()[2]);
+        }
       }
     }
-  }
 
-  RunGraph(graph, target, scope, output_ids);
+    RunGraph(graph, target, scope, output_ids);
 
-  auto output_tensor = scope->GetTensor(output_ids.front());
-  auto output_data   = GetTensorData(output_tensor, target);
-  if (print_tensor) {
-    if (output_tensor->shape().data().size() == 2) {
-      PrintMatrix(output_data, 1, output_tensor->shape().data()[0], output_tensor->shape().data()[1]);
-    } else if (output_tensor->shape().data().size() == 3) {
-      PrintMatrix(output_data,
-                  output_tensor->shape().data()[0],
-                  output_tensor->shape().data()[1],
-                  output_tensor->shape().data()[2]);
+    auto output_tensor = scope->GetTensor(output_ids.front());
+    output_data        = GetTensorData(output_tensor, target);
+    if (print_tensor) {
+      if (output_tensor->shape().data().size() == 2) {
+        PrintMatrix(output_data, 1, output_tensor->shape().data()[0], output_tensor->shape().data()[1]);
+      } else if (output_tensor->shape().data().size() == 3) {
+        PrintMatrix(output_data,
+                    output_tensor->shape().data()[0],
+                    output_tensor->shape().data()[1],
+                    output_tensor->shape().data()[2]);
+      }
     }
+    double time = timer.Stop();
+    LOG(INFO) << "Time spent " << i << ": " << time;
   }
+
   return output_data;
 }
 
@@ -184,6 +204,7 @@ void CompareResult(Program* program,
 
   // get original program size
   auto origin_size = program->size();
+  LOG(INFO) << "Running the original program...";
   // get original output
   auto origin_out = RunProgram(*program, target, input_ids, output_ids, seed, print_tensor);
 
@@ -194,6 +215,8 @@ void CompareResult(Program* program,
   auto fused_size = program->size();
   ASSERT_EQ(size_diff, origin_size - fused_size);
   // get fused output
+
+  LOG(INFO) << "Running the optimized program...";
   auto fused_out = RunProgram(*program, target, input_ids, output_ids, seed, print_tensor);
 
   ASSERT_EQ(origin_out.size(), fused_out.size());

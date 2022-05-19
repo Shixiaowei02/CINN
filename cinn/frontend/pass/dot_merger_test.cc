@@ -74,7 +74,7 @@ TEST(DotMerger, rhs) {
     return;
   }
   NetBuilder builder("net_builder");
-  int m1 = 3, m2 = 1, k = 2, n = 1, axis = 0;
+  int m1 = 10201, m2 = 10201, k = 50, n = 50, axis = 0;
   auto a = builder.CreateInput(Float(32), {m1, k}, "A");
   auto b = builder.CreateInput(Float(32), {m2, k}, "B");
   auto c = builder.CreateInput(Float(32), {k, n}, "C");
