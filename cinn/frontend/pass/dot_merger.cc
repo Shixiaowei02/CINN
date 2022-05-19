@@ -66,7 +66,6 @@ std::unique_ptr<Digraph> DotMergerPass::GeneratePattern(const std::unordered_set
 
   // TODO: move it into the base class
   auto not_fetch = [=](ProgramVar* var) -> bool {
-    LOG(INFO) << "fetch = " << var->raw()->get()->id << ", " << !fetch_ids.count(var->raw()->get()->id);
     bool res = !fetch_ids.count(var->raw()->get()->id);
     return res;
   };
