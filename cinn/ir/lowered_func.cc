@@ -405,11 +405,13 @@ std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x) {
 }
 
 void CudaAxisInfo::set_grid_dim(int offset, int x) {
+  LOG(INFO) << "CudaAxisInfo::set_grid_dim: " << offset << ", " << x << '\n';
   valid_ = true;
   CHECK_LT(offset, 3);
   grid_dims_[offset] = x;
 }
 void CudaAxisInfo::set_block_dim(int offset, int x) {
+  LOG(INFO) << "CudaAxisInfo::set_block_dim: " << offset << ", " << x << '\n';
   valid_ = true;
   CHECK_LT(offset, 3);
   block_dims_[offset] = x;

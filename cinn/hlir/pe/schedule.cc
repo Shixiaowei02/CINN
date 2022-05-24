@@ -2097,7 +2097,7 @@ void CudaScheduleInjective(poly::Stage *stage, const std::vector<int> &output_sh
   }
 
   int num_thread        = target.max_num_threads();
-  int num_block         = 512;
+  int num_block         = 513;
   int vector_width      = 1;
   int prod_size         = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   bool need_block_split = prod_size > num_thread * num_block * vector_width ? true : false;
