@@ -37,6 +37,7 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   options.program_passes = {"Decomposer",
                             "TransposeCollapsing",
                             "TransposeFoldingInput",
+                            "DotMerger",
                             "GemmRewriter",
                             "TransposeFoldingOutput",
                             "GemmRewriter",

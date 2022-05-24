@@ -67,7 +67,7 @@ OpLowerer::OpLowerer(const absl::flat_hash_map<std::string, Type>& type_dict,
     : type_dict_(type_dict), shape_dict_(shape_dict), target_(target) {}
 
 std::vector<ir::LoweredFunc> OpLowerer::Lower(GroupPtr& group) {
-  VLOG(3) << "Lowering Group : " << group->group_id << " , Op Pattern : " << group->op_pattern_kind;
+  LOG(INFO) << "Lowering Group : " << group->group_id << " , Op Pattern : " << group->op_pattern_kind;
   switch (group->op_pattern_kind) {
     case framework::kElemWise:
     case framework::kBroadcast:

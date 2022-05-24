@@ -313,6 +313,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
   }
 
   auto impl = OpStrategy::SelectImpl(strategy[node->op()](node->attrs, inputs, out_types, output_shapes, target_));
+  LOG(INFO) << "impl->name = " << impl->name;
 
   common::CINNValuePack C = impl->fcompute(common::CINNValuePack{cinn_inputs});
   poly::StageMap stages   = C.back();
@@ -653,6 +654,7 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
     // lowering of new fusion pass is not compatible with the groups from the input options,
     // thus process it seperately
     if (!graph_->fusion_groups.empty()) {
+      LOG(INFO) << "fusion_groups empty FALSE!";
       auto& dtype_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
       auto& shape_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
 
@@ -678,11 +680,14 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
         VLOG(3) << local_lowered_funcs.back()[0];
       }
     } else {
+      LOG(INFO) << "fusion_groups empty TRUE!";
       for (int i = 0; i < groups.size(); i++) {
         std::vector<ir::LoweredFunc> lowered_func;
         if (groups[i].size() == 1) {
+          LOG(INFO) << "groups[i].size() == 1";
           lowered_func = GetOpFunc(groups[i][0]);
         } else {
+          LOG(INFO) << "groups[i].size() != 1";
           lowered_func = GetOpFunc(groups[i]);
         }
         local_lowered_funcs.emplace_back(std::move(lowered_func));

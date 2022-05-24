@@ -30,7 +30,7 @@ namespace cinn::frontend::pass {
  * (m, k) * (k, n1 + n2) -> (m, n1 + n2)
  * (m, n1 + n2) slice -> (m, n1), (m, n2)
  */
-
+/*
 TEST(DotMerger, lhs) {
   if (!IsCompiledWithCUDA()) {
     // because op def changes with the macro
@@ -55,7 +55,7 @@ TEST(DotMerger, lhs) {
                                                                        {"TransposeFoldingInput", "DotMerger"}};
   CompareResult(&p, target, input_ids, {f->id}, -2, std::move(passes), 123, true);
 }
-
+*/
 /*
  * DotMerger Test
  *

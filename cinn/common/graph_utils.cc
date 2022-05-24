@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <deque>
+#include <fstream>
 #include <functional>
 #include <set>
 #include <stack>
@@ -158,6 +159,16 @@ std::string Graph::Visualize() const {
     for (auto &sink : source->outlinks()) {
       dot.AddEdge(source->id(), sink->sink()->id(), {});
     }
+  }
+
+  std::string dot_str = dot();
+  {
+    std::stringstream ss;
+    ss << dot_str;
+    std::string myString = ss.str();
+
+    std::ofstream file("dot_debug.txt", std::ofstream::out | std::ofstream::trunc);
+    file << myString;
   }
 
   return dot();
