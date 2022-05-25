@@ -625,7 +625,7 @@ std::shared_ptr<OpStrategy> StrategyForConcat(const framework::NodeAttr &attrs,
     Expr out               = arg_pack[0];
     CHECK(out.as_tensor());
     if (target.arch == Target::Arch::NVGPU) {
-      pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.back(), target);
+      pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.back(), target, 513);
     } else if (target.arch == Target::Arch::X86) {
       pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()], output_shapes.back(), target, false);
     }

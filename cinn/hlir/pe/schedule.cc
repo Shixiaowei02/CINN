@@ -2089,15 +2089,18 @@ void CudaScheduleWinogradConv(poly::StageMap wino_stages,
   wino_stages[inverse]->SimpleComputeAt(wino_stages[wino_conv], 1);
 }
 
-void CudaScheduleInjective(poly::Stage *stage, const std::vector<int> &output_shape, const common::Target &target) {
+void CudaScheduleInjective(poly::Stage *stage,
+                           const std::vector<int> &output_shape,
+                           const common::Target &target,
+                           int num_block) {
   CHECK_EQ(stage->n_out_dims(), stage->n_in_dims()) << "The dims of op are not equal";
   int dims = stage->n_out_dims();
   for (int i = 1; i < dims; i++) {
     stage->Fuse(0, 1);
   }
 
-  int num_thread        = target.max_num_threads();
-  int num_block         = 1024;
+  int num_thread = target.max_num_threads();
+  // int num_block         = 1024;
   int vector_width      = 1;
   int prod_size         = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   bool need_block_split = prod_size > num_thread * num_block * vector_width ? true : false;
