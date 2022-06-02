@@ -213,7 +213,7 @@ void CompareResult(Program* program,
 
   // get fused program size
   auto fused_size = program->size();
-  ASSERT_EQ(size_diff, origin_size - fused_size);
+  ASSERT_EQ(size_diff, static_cast<int>(origin_size - fused_size));
   // get fused output
 
   LOG(INFO) << "Running the optimized program...";

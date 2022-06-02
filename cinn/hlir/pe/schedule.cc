@@ -2089,38 +2089,52 @@ void CudaScheduleWinogradConv(poly::StageMap wino_stages,
   wino_stages[inverse]->SimpleComputeAt(wino_stages[wino_conv], 1);
 }
 
-void CudaScheduleInjective(poly::Stage *stage, const std::vector<int> &output_shape, const common::Target &target) {
-  CHECK_EQ(stage->n_out_dims(), stage->n_in_dims()) << "The dims of op are not equal";
-  int dims = stage->n_out_dims();
-  for (int i = 1; i < dims; i++) {
-    stage->Fuse(0, 1);
+namespace {
+int gcd(int a, int b) {
+  if (a == 0) return b;
+  if (b == 0) return a;
+  if (a == 1 || b == 1) return 1;
+  if (a < 0 || b < 0) {
+    return gcd(std::abs(a), std::abs(b));
   }
 
-  int num_thread        = target.max_num_threads();
-  int num_block         = 513;
-  int vector_width      = 1;
-  int prod_size         = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
-  bool need_block_split = prod_size > num_thread * num_block * vector_width ? true : false;
-  if (need_block_split) {
-    auto x_outer_inner = stage->Split(0, num_thread * num_block);
-    auto &X_outer      = std::get<0>(x_outer_inner);
-    auto &X_inner      = std::get<1>(x_outer_inner);
+  if (a == b) return a;
 
-    auto Block_x_Thread_x = stage->Split(X_inner, num_thread);
-    auto &Block_x         = std::get<0>(Block_x_Thread_x);
-    auto &Thread_x        = std::get<1>(Block_x_Thread_x);
+  if (a > b) return gcd(a - b, b);
+  return gcd(a, b - a);
+}
+}  // namespace
 
-    stage->Reorder({Block_x, Thread_x, X_outer});
-    stage->Bind(0, "blockIdx.x");
-    stage->Bind(1, "threadIdx.x");
-  } else {
-    if (prod_size > num_thread) {
-      stage->Split(0, num_thread);
-      stage->Bind(0, "blockIdx.x");
-      stage->Bind(1, "threadIdx.x");
-    } else {
-      stage->Bind(0, "threadIdx.x");
-    }
+void CudaScheduleInjective(poly::Stage *stage, const std::vector<int> &output_shape, const common::Target &target) {
+  CHECK_EQ(stage->n_out_dims(), stage->n_in_dims()) << "The dims of op are not equal";
+  std::vector<int> origin_shapes;
+  int dims = stage->n_out_dims() - 1;
+  for (int i = 0; i <= dims; i++) {
+    origin_shapes.push_back(stage->GetDimRange(i));
+  }
+  int num_thread = target.max_num_threads();
+  if (stage->GetDimRange(dims) > num_thread) {
+    stage->Split(dims, gcd(stage->GetDimRange(dims), num_thread));
+    ++dims;
+  }
+
+  while (dims > 0 && stage->GetDimRange(dims - 1) * stage->GetDimRange(dims) < num_thread) {
+    stage->Fuse(dims - 1, dims);
+    --dims;
+  }
+
+  stage->Bind(dims, "threadIdx.x");
+  --dims;
+
+  while (dims > 2) {
+    stage->Fuse(dims - 1, dims);
+    --dims;
+  }
+  std::string block_idx = "blockIdx.x";
+  for (int j = 0; dims >= 0; ++j) {
+    block_idx.back() = 'x' + j;
+    stage->Bind(dims, block_idx);
+    --dims;
   }
 }
 

@@ -30,20 +30,22 @@ namespace cinn::frontend::pass {
  * (m, k) * (k, n1 + n2) -> (m, n1 + n2)
  * (m, n1 + n2) slice -> (m, n1), (m, n2)
  */
-/*
+
 TEST(DotMerger, lhs) {
   if (!IsCompiledWithCUDA()) {
     // because op def changes with the macro
     return;
   }
-  int m = 2, k = 1, n1 = 2, n2 = 1, axis = 1;
+  int m = 2, k = 10201, n1 = 50, n2 = 50, axis = 1;
   NetBuilder builder("net_builder");
   auto a = builder.CreateInput(Float(32), {m, k}, "A");
   auto b = builder.CreateInput(Float(32), {k, n1}, "B");
   auto c = builder.CreateInput(Float(32), {k, n2}, "C");
   auto d = builder.Matmul(a, b);
   auto e = builder.Matmul(a, c);
-  auto f = builder.Concat({d, e}, axis);
+  auto f = builder.CreateInput(Float(32), {m, n1}, "D");
+  auto g = builder.Add(d, f);
+  auto h = builder.Add(e, g);
   auto p = builder.Build();
 
   Target target = common::DefaultNVGPUTarget();
@@ -51,11 +53,11 @@ TEST(DotMerger, lhs) {
   absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer", "RemoveIdentity"},
-                                                                       {"TransposeFoldingInput", "DotMerger"}};
-  CompareResult(&p, target, input_ids, {f->id}, -2, std::move(passes), 123, true);
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer", "RemoveIdentity"}, {"TransposeFoldingInput", "DotMerger", "GemmRewriter"}};
+  CompareResult(&p, target, input_ids, {h->id}, -2, std::move(passes), 123, true);
 }
-*/
+
 /*
  * DotMerger Test
  *
@@ -68,13 +70,13 @@ TEST(DotMerger, lhs) {
  * (m1 + m2, k) * (k, n) -> (m1 + m2, n)
  * (m1 + m2, n) slice -> (m1, n), (m2, n)
  */
-
+/*
 TEST(DotMerger, rhs) {
   if (!IsCompiledWithCUDA()) {
     return;
   }
   NetBuilder builder("net_builder");
-  int m1 = 10201, m2 = 10201, k = 50, n = 50, axis = 0;
+  int m1 = 50, m2 = 50, k = 10201, n = 2, axis = 0;
   auto a = builder.CreateInput(Float(32), {m1, k}, "A");
   auto b = builder.CreateInput(Float(32), {m2, k}, "B");
   auto c = builder.CreateInput(Float(32), {k, n}, "C");
@@ -92,5 +94,5 @@ TEST(DotMerger, rhs) {
                                                                        {"TransposeFoldingInput", "DotMerger"}};
   CompareResult(&p, target, input_ids, {f->id}, -2, std::move(passes), 123, true);
 }
-
+*/
 }  // namespace cinn::frontend::pass
