@@ -14,6 +14,7 @@
 
 #include "cinn/frontend/net_builder.h"
 #include "cinn/frontend/pass/pass_test_helper.h"
+#include "cinn/runtime/cuda/cuda_util.h"
 #include "gtest/gtest.h"
 
 namespace cinn::frontend::pass {
@@ -36,6 +37,7 @@ TEST(DotMerger, lhs) {
     // because op def changes with the macro
     return;
   }
+  cinn::runtime::cuda::CublasHandle::get_instance();
   int m = 2, k = 10201, n1 = 50, n2 = 50, axis = 1;
   NetBuilder builder("net_builder");
   auto a = builder.CreateInput(Float(32), {m, k}, "A");
