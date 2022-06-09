@@ -677,20 +677,18 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
         }
         local_lowered_funcs.emplace_back(std::move(op_lowerer.Lower(group)));
         CHECK_EQ(local_lowered_funcs.back().size(), 1) << "Lowerd Function Is Not Equal 1!";
-        VLOG(3) << local_lowered_funcs.back()[0];
+        LOG(INFO) << local_lowered_funcs.back()[0];
       }
     } else {
-      LOG(INFO) << "fusion_groups empty TRUE!";
       for (int i = 0; i < groups.size(); i++) {
         std::vector<ir::LoweredFunc> lowered_func;
         if (groups[i].size() == 1) {
-          LOG(INFO) << "groups[i].size() == 1";
           lowered_func = GetOpFunc(groups[i][0]);
         } else {
-          LOG(INFO) << "groups[i].size() != 1";
           lowered_func = GetOpFunc(groups[i]);
         }
         local_lowered_funcs.emplace_back(std::move(lowered_func));
+        LOG(INFO) << local_lowered_funcs.back()[0];
       }
     }
   }
