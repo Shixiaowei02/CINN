@@ -37,7 +37,6 @@ namespace frontend {
     macro__(Add)                                \
     macro__(Sub)                                \
     macro__(Div)                                \
-    macro__(Matmul)                             \
     macro__(ReluGrad)
 
 #define NETBUILDER_ELEMENTWISE_OP_FOREACH(macro__)   \
@@ -150,6 +149,9 @@ class NetBuilder : public BaseBuilder {
   Variable Scale(const Variable& a, float scale = 1.0f, float bias = 0.0f, bool bias_after_scale = true);
 
   Variable Softmax(const Variable& a, int axis = -1, const std::string& data_format = "AnyLayout");
+
+  Variable Matmul(
+      const Variable& lhs, const Variable& rhs, bool trans_a = false, bool trans_b = false, float alpha = 1);
 
   Variable DropoutInfer(const Variable& a,
                         float dropout_prob                        = 0.5f,

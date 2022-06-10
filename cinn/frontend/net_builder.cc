@@ -36,7 +36,6 @@ NETBUILDER_UNARY_OP_DEF(Identity, identity)
 NETBUILDER_BINARY_OP_DEF(Add, elementwise_add)
 NETBUILDER_BINARY_OP_DEF(Sub, substract)
 NETBUILDER_BINARY_OP_DEF(Div, divide)
-NETBUILDER_BINARY_OP_DEF(Matmul, matmul)
 NETBUILDER_BINARY_OP_DEF(ReluGrad, relu_grad)
 
 #define NETBUILDER_ELEMENTWISE_OP_DEF(func_name__, op_type__)                            \
@@ -45,6 +44,16 @@ NETBUILDER_BINARY_OP_DEF(ReluGrad, relu_grad)
   }
 NETBUILDER_ELEMENTWISE_OP_DEF(ElementwiseAdd, elementwise_add)
 NETBUILDER_ELEMENTWISE_OP_DEF(ElementwiseMul, elementwise_mul)
+
+Variable NetBuilder::Matmul(const Variable& lhs, const Variable& rhs, bool trans_a, bool trans_b, float alpha) {
+  Instruction instr("matmul", {lhs, rhs});
+  instr.SetAttr("trans_a", trans_a);
+  instr.SetAttr("trans_b", trans_b);
+  instr.SetAttr("alpha", alpha);
+  InferShape(instr);
+  AppendInstruction(instr);
+  return instr.GetOutput(0);
+}
 
 Variable NetBuilder::Mul(const Variable& a, const Variable& b, int x_num_col_dims, int y_num_col_dims) {
   Instruction instr("mul", {a, b});
