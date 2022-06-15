@@ -85,10 +85,6 @@ std::unique_ptr<Digraph> DotMergerPass::GeneratePattern(const std::unordered_set
     }
     return false;
   };
-  auto no_trans = [](ProgramInstr* instr) -> bool {
-    bool res = false;
-    return !GetAttr<bool>(instr->raw(), "trans_a") && !GetAttr<bool>(instr->raw(), "trans_b");
-  };
 
   PatternBuilder builder;
   auto* in_0     = builder.AddVar()->Assert(has_2d_shape)->Assert(in_matmul)->set_label("in_0");
@@ -129,6 +125,17 @@ void DotMergerPass::Rewrite(Program* prog,
                             const std::unordered_set<std::string>& fetch_ids,
                             const common::Target& target) {
   LOG(INFO) << "matches size = " << matches_.size();
+  for (size_t i = 0; i < prog->size(); ++i) {
+    auto& instr = (*prog)[i];
+    if (instr->op_type == "matmul") {
+      LOG(INFO) << "\n === matmul op";
+      LOG(INFO) << "trans_a: " << GetAttr<bool>(&instr, "trans_a") << ", "
+                << "trans_b: " << GetAttr<bool>(&instr, "trans_b");
+      for (auto& in : instr->inputs) {
+        LOG(INFO) << in << ": " << in->shape[0] << ", " << in->shape[1];
+      }
+    }
+  }
   for (const auto& match : matches_) {
     const auto& in0     = *get_mapped_var(match, "in_0")->raw();
     const auto& in1     = *get_mapped_var(match, "in_1")->raw();
@@ -137,6 +144,7 @@ void DotMergerPass::Rewrite(Program* prog,
     const auto& out1    = *get_mapped_var(match, "out_1")->raw();
     const auto& matmul0 = *get_mapped_instr(match, "matmul_0")->raw();
     const auto& matmul1 = *get_mapped_instr(match, "matmul_1")->raw();
+    LOG(INFO) << "match: " << in0->id << ", " << in1->id << ", " << in2->id;
 
     DepthFirstSearch dfs(*program_);
     if (dfs.accessible(get_mapped_var(match, "out_0"), get_mapped_var(match, "in_2")) ||
@@ -154,6 +162,7 @@ void DotMergerPass::Rewrite(Program* prog,
     bool trans_a = GetAttr<bool>(&matmul0, "trans_a");
     bool trans_b = GetAttr<bool>(&matmul0, "trans_b");
     if (in_idx(matmul0, in0) != in_idx(matmul1, in0) || in_idx(matmul0, in1) != in_idx(matmul1, in2)) {
+      LOG(INFO) << "except " << in0->id << ", " << in1->id;
       continue;
     } else if (in_idx(matmul0, in0) == 1) {
       lhs = false;
@@ -208,18 +217,6 @@ void DotMergerPass::Rewrite(Program* prog,
     }
     auto program = builder.Build();
     *prog        = std::move(program);
-  }
-
-  for (size_t i = 0; i < prog->size(); ++i) {
-    auto& instr = (*prog)[i];
-    if (instr->op_type == "matmul") {
-      LOG(INFO) << "\n === matmul op";
-      LOG(INFO) << "trans_a: " << GetAttr<bool>(&instr, "trans_a") << ", "
-                << "trans_b: " << GetAttr<bool>(&instr, "trans_b");
-      for (auto& in : instr->inputs) {
-        LOG(INFO) << in << ": " << in->shape[0] << ", " << in->shape[1];
-      }
-    }
   }
 }
 
