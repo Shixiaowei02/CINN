@@ -1645,11 +1645,11 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerOpaqueOp(GroupPtr& group) {
   VLOG(3) << "LowerOpaqueOp Group : " << group->group_id;
   // get input tensor and output tensor
   std::vector<ir::Tensor> func_args;
-  CHECK_EQ(group->nodes.size(), 1) << "fusion op exist more than 1 op.";
+  CHECK(group->nodes.size() || group->fused_sub_groups.size());
   auto& cinn_strategy   = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
 
-  auto node = *group->nodes.begin();
+  auto node = group->fused_sub_groups.size() ? group->fused_sub_groups[0]->nodes.front() : group->nodes.front();
   std::vector<ir::Tensor> tensor_inputs;
   std::vector<common::CINNValue> cinn_inputs;
   for (auto& link : node->inlinks_in_order(true)) {
