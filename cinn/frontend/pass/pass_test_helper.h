@@ -114,7 +114,7 @@ void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
               const std::shared_ptr<hlir::framework::Scope>& scope,
               const std::vector<std::string>& output_ids) {
   if (FLAGS_cinn_use_new_fusion_pass) {
-    hlir::framework::ApplyPasses(graph.get(), {"DotMerger", "OpFusionPass", "FusionMergePass"});
+    hlir::framework::ApplyPasses(graph.get(), {"DotMerger", "OpFusionPass"});
   } else {
     hlir::framework::ApplyPasses(graph.get(), {"DotMerger", "OpFusion"});
   }
