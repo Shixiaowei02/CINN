@@ -55,10 +55,8 @@ bool accessible(GraphNode* start, GraphNode* end) {
 template <typename T>
 T get_attr(Node* instr, const std::string& attr, T def) {
   if (!instr->attrs.attr_store.count(attr)) {
-    LOG(INFO) << "not find attr: " << attr;
     return def;
   }
-  LOG(INFO) << "found attr: " << attr << " = " << absl::get<T>(instr->attrs.attr_store.at(attr));
   return absl::get<T>(instr->attrs.attr_store.at(attr));
 }
 
@@ -156,14 +154,16 @@ void PrintAllMatmulOps(framework::Graph* graph, const std::string& dot_type) {
   for (auto* n : nodes) {
     auto* op_node = n->safe_as<Node>();
     if (op_node && op_node->op()->name == dot_type) {
-      auto a_shape = shape_dict.at(input_operand(op_node, 0)->id());
-      auto b_shape = shape_dict.at(input_operand(op_node, 1)->id());
+      auto a_id    = input_operand(op_node, 0)->id();
+      auto b_id    = input_operand(op_node, 1)->id();
+      auto a_shape = shape_dict.at(a_id);
+      auto b_shape = shape_dict.at(b_id);
       LOG(INFO) << "Find op: " << dot_type;
       LOG(INFO) << "Attrs: "
                 << "trans_a = " << get_attr<bool>(op_node, "trans_a", false) << ", "
                 << "trans_b = " << get_attr<bool>(op_node, "trans_b", false) << ", "
-                << "a_shape = " << print_shape(a_shape) << ", "
-                << "b_shape = " << print_shape(b_shape);
+                << "a: " << a_id << ", " << print_shape(a_shape) << " "
+                << "b: " << b_id << ", " << print_shape(b_shape);
     }
   }
 }
