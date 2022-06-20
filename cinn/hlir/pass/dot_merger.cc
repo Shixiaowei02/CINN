@@ -197,6 +197,7 @@ int DotBuilder::idx_;
 class DotMergerPass {
  public:
   static void Apply(framework::Graph* graph, const std::string& dot_type) {
+    int cnt{};
     auto clusters = GetClusters(graph, dot_type);
     std::set<Node*> nodes_to_remove;
     DotBuilder builder(graph, dot_type);
@@ -212,9 +213,9 @@ class DotMergerPass {
           if (!b || nodes_to_remove.count(a) || nodes_to_remove.count(b) || accessible(a, b) || accessible(b, a)) {
             continue;
           }
-          VLOG(5) << "fuse: " << a->id() << " (" << a << "), " << b->id() << " (" << b << "), ";
           auto* merged = MergeDots(&builder, a, b);
           if (merged) {
+            cnt++;
             nodes_to_remove.insert(a);
             nodes_to_remove.insert(b);
             dots[i] = merged;
@@ -223,6 +224,7 @@ class DotMergerPass {
         }
       }
     }
+    VLOG(5) << "A total of " << cnt << " fusions.";
     for (auto* n : nodes_to_remove) {
       remove_node(graph, n);
     }
