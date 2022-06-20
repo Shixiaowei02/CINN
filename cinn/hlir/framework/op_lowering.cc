@@ -558,13 +558,6 @@ void OpLowerer::ElementwiseSchedule(poly::StageMap& stages,
     }
 
     if (master_shape != node_shape) {
-      LOG(INFO) << master_node->id();
-      for (auto size : master_shape) {
-        LOG(INFO) << "master shape -> " << size;
-      }
-      for (auto size : node_shape) {
-        LOG(INFO) << "node shape -> " << size;
-      }
       CHECK(!group->output_nodes.count(node)) << node->id() << " is to be broadcasted, it can't be output!";
       node_stage->ComputeInline();
       continue;

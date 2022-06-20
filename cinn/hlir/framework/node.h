@@ -68,7 +68,6 @@ std::ostream &operator<<(std::ostream &os, const NodeAttr &node_attr);
 class Node : public common::GraphNode {
  public:
   Node() = default;
-  virtual ~Node() { LOG(INFO) << "dtor: " << id_; }
   Node(const Operator *op, const std::string &name, std::string id = {}) {
     this->attrs.op        = op;
     this->attrs.node_name = name;
