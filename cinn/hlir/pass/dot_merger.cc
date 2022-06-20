@@ -144,8 +144,9 @@ void InferShape(Node* node, dtype_dict_t& dtype_dict, shape_dict_t& shape_dict) 
 
 class DotBuilder {
  public:
-  explicit DotBuilder(framework::Graph* graph)
+  explicit DotBuilder(framework::Graph* graph, std::string dot_type)
       : graph_{graph},
+        dot_type_{std::move(dot_type)},
         dtype_dict_{graph_->GetMutableAttrs<dtype_dict_t>("inferdtype")},
         shape_dict_{graph_->GetMutableAttrs<shape_dict_t>("infershape")} {}
 
@@ -183,7 +184,7 @@ class DotBuilder {
 
   NodeData* Matmul(bool trans_a, bool trans_b, bool trans_out, float alpha, NodeData* lhs, NodeData* rhs) {
     LOG(INFO) << "DotBuilder::Matmul";
-    const std::string type{"matmul"};
+    const std::string type{dot_type_};
     auto instr                           = common::Shared<Node>(new Node(
         framework::Operator::Get(type), type + "__dot_merger_", type + "__dot_merger_" + std::to_string(idx_++)));
     matmul_                              = instr.get();
@@ -223,6 +224,7 @@ class DotBuilder {
  private:
   static int idx_;
   framework::Graph* graph_;
+  const std::string dot_type_;
   dtype_dict_t& dtype_dict_;
   shape_dict_t& shape_dict_;
   Node* matmul_{};
@@ -234,10 +236,10 @@ int DotBuilder::idx_;
 
 class DotMergerPass {
  public:
-  void Apply(framework::Graph* graph) {
-    auto clusters = GetClusters(graph, "matmul");
+  static void Apply(framework::Graph* graph, const std::string& dot_type) {
+    auto clusters = GetClusters(graph, dot_type);
     std::set<Node*> nodes_to_remove;
-    DotBuilder builder(graph);
+    DotBuilder builder(graph, dot_type);
     for (auto& c : clusters) {
       LOG(INFO) << "cluster: " << c.first->id() << ", size = " << c.second.size();
       auto& dots = c.second;
@@ -392,8 +394,7 @@ void DotMergerPassFunc(framework::Graph* graph) {
     file << myString;
   }
 
-  DotMergerPass pass;
-  pass.Apply(graph);
+  DotMergerPass::Apply(graph, "matmul");
 
   {
     std::string str = graph->Visualize();
