@@ -19,6 +19,7 @@
 #include "cinn/common/graph_utils.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/pass.h"
+#include "cinn/hlir/pass/infershape.h"
 
 namespace cinn {
 namespace hlir {
@@ -83,61 +84,6 @@ bool all_equal(const T& arg) {
 template <typename T, typename... Args>
 bool all_equal(const T& arg, const Args&... args) {
   return all_equal(arg) && all_equal(args...);
-}
-
-void InferShape(Node* node, dtype_dict_t& dtype_dict, shape_dict_t& shape_dict) {
-  auto op_infershape = Operator::GetAttrs<infershape_t>("infershape");
-  auto op_inferdtype = Operator::GetAttrs<inferdtype_t>("inferdtype");
-  CHECK(node) << "The node can not be nullptr.";
-
-  auto product = [](const framework::shape_t& shape) {
-    framework::dim_t numel = 1;
-    std::for_each(shape.begin(), shape.end(), [&numel](framework::dim_t dim) { numel *= dim; });
-    return numel;
-  };
-
-  std::vector<framework::shape_t> inputs_shape;
-  std::vector<Type> inputs_dtype;
-  for (auto& in_edge : node->inlinks_in_order()) {
-    auto* source_node = in_edge->source()->safe_as<NodeData>();
-    CHECK(source_node);
-    CHECK(shape_dict.count(source_node->id())) << "No shape for " << source_node->id();
-    CHECK(dtype_dict.count(source_node->id())) << "No dtype for " << source_node->id();
-    inputs_shape.push_back(shape_dict[source_node->id()]);
-    inputs_dtype.push_back(dtype_dict[source_node->id()]);
-
-    CHECK(product(inputs_shape.back())) << node->id() << " 's Input Node " << source_node->id() << "["
-                                        << utils::Join(inputs_shape.back(), ",")
-                                        << "]'s size should not zero ! Please check.";
-  }
-
-  auto out_shape = op_infershape[node->op()](inputs_shape, node->attrs.attr_store);
-  auto out_dtype = op_inferdtype[node->op()](inputs_dtype, node->attrs.attr_store);
-
-  CHECK_GE(node->outlinks_in_order().size(), out_shape.size())
-      << "The output number of node " << node->id() << " is " << node->outlinks_in_order().size()
-      << " , which is smaller than the output shape size " << out_shape.size() << " . And the op type is "
-      << node->op()->name;
-  CHECK_GE(node->outlinks_in_order().size(), out_dtype.size())
-      << "The output number of node " << node->id() << " is " << node->outlinks_in_order().size()
-      << " , which is smaller than the output dtype size " << out_dtype.size() << " . And the op type is "
-      << node->op()->name;
-
-  int counter = 0;
-  for (auto& out_edge : node->outlinks_in_order()) {
-    auto* sink_node = out_edge->sink()->safe_as<NodeData>();
-    CHECK(sink_node);
-
-    VLOG(3) << "Infershape: " << sink_node->id() << " " << utils::Join(out_shape[counter], ",");
-    shape_dict[sink_node->id()] = out_shape[counter];
-    dtype_dict[sink_node->id()] = out_dtype[counter];
-
-    CHECK(product(out_shape[counter])) << node->id() << " 's Output Node " << sink_node->id() << "["
-                                       << utils::Join(out_shape[counter], ",")
-                                       << "]'s size should not zero ! Please check.";
-
-    counter++;
-  }
 }
 
 void PrintAllMatmulOps(framework::Graph* graph, const std::string& dot_type) {

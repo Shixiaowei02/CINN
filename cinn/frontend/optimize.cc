@@ -49,9 +49,9 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   options.program_passes.emplace_back("DeadCodeEliminate");
 
   if (FLAGS_cinn_use_new_fusion_pass) {
-    options.graph_passes = {"DotMerger", "OpFusionPass"};
+    options.graph_passes = {"OpFusionPass"};
   } else {
-    options.graph_passes = {"DotMerger", "OpFusion"};
+    options.graph_passes = {"OpFusion"};
   }
   return options;
 }
