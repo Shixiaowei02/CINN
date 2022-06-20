@@ -142,6 +142,32 @@ void InferShape(Node* node, dtype_dict_t& dtype_dict, shape_dict_t& shape_dict) 
   }
 }
 
+void PrintAllMatmulOps(framework::Graph* graph, const std::string& dot_type) {
+  auto& dtype_dict{graph->GetMutableAttrs<dtype_dict_t>("inferdtype")};
+  auto& shape_dict{graph->GetMutableAttrs<shape_dict_t>("infershape")};
+  auto nodes       = std::get<0>(graph->topological_order());
+  auto print_shape = [](const std::vector<int32_t>& shape) -> std::string {
+    std::stringstream ss;
+    for (auto i : shape) {
+      ss << i << ",";
+    }
+    return ss.str();
+  };
+  for (auto* n : nodes) {
+    auto* op_node = n->safe_as<Node>();
+    if (op_node && op_node->op()->name == dot_type) {
+      auto a_shape = shape_dict.at(input_operand(op_node, 0)->id());
+      auto b_shape = shape_dict.at(input_operand(op_node, 1)->id());
+      LOG(INFO) << "Find op: " << dot_type;
+      LOG(INFO) << "Attrs: "
+                << "trans_a = " << get_attr<bool>(op_node, "trans_a", false) << ", "
+                << "trans_b = " << get_attr<bool>(op_node, "trans_b", false) << ", "
+                << "a_shape = " << print_shape(a_shape) << ", "
+                << "b_shape = " << print_shape(b_shape);
+    }
+  }
+}
+
 class DotBuilder {
  public:
   explicit DotBuilder(framework::Graph* graph, std::string dot_type)
@@ -395,6 +421,7 @@ void DotMergerPassFunc(framework::Graph* graph) {
   }
 
   DotMergerPass::Apply(graph, "matmul");
+  PrintAllMatmulOps(graph, "matmul");
 
   {
     std::string str = graph->Visualize();
