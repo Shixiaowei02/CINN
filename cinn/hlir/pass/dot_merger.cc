@@ -420,8 +420,15 @@ void DotMergerPassFunc(framework::Graph* graph) {
     file << myString;
   }
 
+  LOG(INFO) << "====== Starting matmul";
   DotMergerPass::Apply(graph, "matmul");
   PrintAllMatmulOps(graph, "matmul");
+  LOG(INFO) << "====== Starting cublas_matmul";
+  DotMergerPass::Apply(graph, "cublas_matmul");
+  PrintAllMatmulOps(graph, "cublas_matmul");
+  LOG(INFO) << "====== Starting cublas_gemm";
+  DotMergerPass::Apply(graph, "cublas_gemm");
+  PrintAllMatmulOps(graph, "cublas_gemm");
 
   {
     std::string str = graph->Visualize();
