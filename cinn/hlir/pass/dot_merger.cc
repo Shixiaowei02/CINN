@@ -16,6 +16,7 @@
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/pass.h"
 #include "cinn/hlir/pass/infershape.h"
+#include "cinn/utils/timer.h"
 
 namespace cinn {
 namespace hlir {
@@ -322,10 +323,14 @@ class DotMergerPass {
 
 void DotMergerPassFunc(framework::Graph* graph) {
   // The cublas gemm is not yet supported.
-  for (auto& dot_type : {"matmul", "cublas_matmul"}) {
+  cinn::utils::Timer timer;
+  timer.Start();
+  for (auto& dot_type : {"matmul"}) {
     int n = DotMergerPass::Apply(graph, dot_type);
     VLOG(3) << "The fusion of `" << dot_type << "` was performed " << n << " times.";
   }
+  auto t = timer.Stop();
+  LOG(INFO) << "The cost of dot_merger_pass is " << t << " ms.";
 }
 
 }  // namespace pass

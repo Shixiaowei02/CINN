@@ -38,9 +38,9 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   options.program_passes.emplace_back("Decomposer");
   options.program_passes.emplace_back("TransposeCollapsing");
   options.program_passes.emplace_back("TransposeFoldingInput");
-  options.program_passes.emplace_back("GemmRewriter");
+  // options.program_passes.emplace_back("GemmRewriter");
   options.program_passes.emplace_back("TransposeFoldingOutput");
-  options.program_passes.emplace_back("GemmRewriter");
+  // options.program_passes.emplace_back("GemmRewriter");
   options.program_passes.emplace_back("ReshapeRewriter");
   if (FLAGS_cinn_use_fill_constant_folding) {
     options.program_passes.emplace_back("FillConstantFolding");
@@ -49,9 +49,9 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   options.program_passes.emplace_back("DeadCodeEliminate");
 
   if (FLAGS_cinn_use_new_fusion_pass) {
-    options.graph_passes = {"OpFusionPass", "FusionMergePass"};
+    options.graph_passes = {"DotMerger", "OpFusionPass", "FusionMergePass"};
   } else {
-    options.graph_passes = {"OpFusion"};
+    options.graph_passes = {"DotMerger", "OpFusion"};
   }
   return options;
 }
