@@ -20,6 +20,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
+static std::mutex mutex;
+
 void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("Input").size(), 1UL);
   auto x_name = op_desc.Input("Input").front();
@@ -42,10 +44,14 @@ void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
   auto padding_algorithm = utils::GetAttrOrDefault<std::string>(op_desc, "padding_algorithm", "EXPLICIT");
   auto x                 = ctx.GetVar(x_name);
   Variable y             = ctx.GetVar(y_name);
-  auto out = ctx.Builder()->Conv2d(x, y, strides, paddings, dilations, groups, data_format, padding_algorithm);
 
-  ctx.AddVar(out_name, out);
-  ctx.AddVarModelToProgram(out_name, out->id);
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    auto out = ctx.Builder()->Conv2d(x, y, strides, paddings, dilations, groups, data_format, padding_algorithm);
+
+    ctx.AddVar(out_name, out);
+    ctx.AddVarModelToProgram(out_name, out->id);
+  }
 }
 
 void DepthwiseConv2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
