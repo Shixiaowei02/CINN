@@ -128,7 +128,7 @@ std::unique_ptr<Schedule> CreateSchedule(const std::vector<Stage *> &stages,
                                          const std::vector<std::pair<std::string, std::string>> &extra_links) {
   CHECK(!stages.empty());
   for (auto &stage : stages) {
-    VLOG(4) << "stage: " << stage->domain();
+    LOG(INFO) << "stage: " << stage->domain();
   }
   switch (schedule_kind) {
     case ScheduleKind::Naive: {

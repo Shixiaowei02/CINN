@@ -789,7 +789,7 @@ LowerImpl::LowerImpl(const std::string& fn_name,
 
     compu_graph_ = CreateCompGraph(tensors, stages, false /*inline_hide*/);
 
-    VLOG(1) << "compu_graph:\n" << compu_graph_->Visualize();
+    LOG(INFO) << "compu_graph:\n" << compu_graph_->Visualize();
   }
 
   // Todo: Here insert auto syncthreads() @haoze
@@ -799,7 +799,7 @@ LowerImpl::LowerImpl(const std::string& fn_name,
     tensors.insert(std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
     compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
 
-    VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
+    LOG(INFO) << "Computation Graph:\n" << compu_graph_->Visualize();
   }
 }
 
