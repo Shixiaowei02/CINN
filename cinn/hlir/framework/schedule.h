@@ -24,6 +24,7 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
+
 /**
  * \brief Global schedule container
  *  For operations and all the operations they depend on.
@@ -57,6 +58,9 @@ class Schedule : public common::Object {
  private:
   static constexpr char* __type_info__ = "CINNSchedule";
 };
+
+lang::PackedFunc GetInjectiveScheduleFunc(const std::vector<std::vector<int>>& output_shapes, const Target& target);
+
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn
