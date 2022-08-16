@@ -76,6 +76,8 @@ HLIR_DCL_UNARY_PE(ElementwiseSum);
 HLIR_DCL_UNARY_PE(Full);
 HLIR_DCL_UNARY_PE(FullLike);
 
+ir::Tensor clip(const ir::Tensor& x, const Expr& min, const Expr& max, std::string name);
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

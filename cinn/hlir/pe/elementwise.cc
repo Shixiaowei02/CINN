@@ -102,6 +102,17 @@ HLIR_IMP_UNARY_PE(Sign);
 HLIR_IMP_UNARY_PE(Abs);
 HLIR_IMP_UNARY_PE(Rsqrt);
 
+ir::Tensor clip(const ir::Tensor& x, const Expr& min, const Expr& max, std::string name) {
+  return Compute(
+      x->shape,
+      [&](const std::vector<Expr>& i) {
+        auto min_val = common::cast(min, x->type());
+        auto max_val = common::cast(max, x->type());
+        return common::max(common::min(x(i), max_val), min_val);
+      },
+      name);
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
