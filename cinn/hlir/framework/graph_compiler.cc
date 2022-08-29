@@ -343,7 +343,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     std::string input_id = i->source()->as<NodeData>()->id();
     auto in_shape        = shape_dict.at(input_id);
     Type dtype           = dtype_dict.at(input_id);
-    CHECK(dtype == Float(32) || dtype.is_bool() || dtype == Int(32))
+    CHECK(dtype == Float(32) || dtype.is_bool() || dtype == Int(32) || dtype == Int(64))
         << "The dtype of node " << input_id << " is not float or bool or int! Other dtype is not implemented yet.";
     ir::Tensor temp;
     if (dtype == Float(32)) {
@@ -351,6 +351,8 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     } else if (dtype.is_bool()) {
       temp = lang::Placeholder<bool>(input_id, in_shape);
     } else if (dtype == Int(32)) {
+      temp = lang::Placeholder<int>(input_id, in_shape);
+    } else if (dtype == Int(64)) {
       temp = lang::Placeholder<int>(input_id, in_shape);
     }
     inputs.push_back(temp);
@@ -1297,7 +1299,7 @@ std::shared_ptr<Scope> BuildScope(Target target, const std::shared_ptr<Graph>& g
     tensor->Resize(Shape{shape});
     CHECK(dtype_dict.count(iter.first));
     CHECK(dtype_dict.at(iter.first) == Float(32) || dtype_dict.at(iter.first).is_bool() ||
-          dtype_dict.at(iter.first) == Int(32))
+          dtype_dict.at(iter.first) == Int(32) || dtype_dict.at(iter.first) == Int(64))
         << "The dtype of node " << iter.first << " is not float or bool or int! Its type "
         << dtype_dict.at(iter.first).type() << ", " << dtype_dict.at(iter.first).bits() << " is not implemented yet.";
     tensor->set_type(dtype_dict.at(iter.first));
