@@ -304,6 +304,8 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFuncWithIRSchedule(
       input = lang::Placeholder<bool>(id, shape);
     } else if (dtype == Int(32)) {
       input = lang::Placeholder<int>(id, shape);
+    } else if (dtype == Int(64)) {
+      input = lang::Placeholder<int>(id, shape);
     }
     tensor_inputs.push_back(input);
     cinn_inputs.push_back(common::CINNValue(input));
@@ -455,6 +457,8 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const std::vector<Node*>& 
         } else if (dtype.is_bool()) {
           temp_in = lang::Placeholder<bool>(input_id, in_shape);
         } else if (dtype == Int(32)) {
+          temp_in = lang::Placeholder<int>(input_id, in_shape);
+        } else if (dtype == Int(64)) {
           temp_in = lang::Placeholder<int>(input_id, in_shape);
         }
         inputs.push_back(temp_in);
