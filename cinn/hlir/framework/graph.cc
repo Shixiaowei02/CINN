@@ -41,12 +41,15 @@ void Graph::Initialize(const frontend::Program& prog,
     for (auto& input_v : temp->inputs) {
       common::GraphNode* graph_node = this->RetrieveNode(input_v->id);
       if (!graph_node) {
+        LOG(INFO) << "not graph_node";
         dtype_dict[input_v->id] = input_v->type;
+        LOG(INFO) << "dtype_dict[input_v->id] = " << input_v->type;
         shape_dict[input_v->id] = input_v->shape;
         NodeData* input_data    = new NodeData(nullptr, 0, 0, input_v->id, input_v.is_const());
         input_data->LinkTo(node_tmp);
         this->RegisterNode(input_v->id, input_data);
       } else {
+        LOG(INFO) << "graph_node: ";
         graph_node->as<NodeData>()->LinkTo(node_tmp);
       }
     }
@@ -54,7 +57,9 @@ void Graph::Initialize(const frontend::Program& prog,
     for (auto& output_v : temp->outputs) {
       common::GraphNode* graph_node = this->RetrieveNode(output_v->id);
       if (!graph_node) {
+        LOG(INFO) << "not graph_node";
         dtype_dict[output_v->id] = output_v->type;
+        LOG(INFO) << "dtype_dict[output_v->id] = " << output_v->type;
         shape_dict[output_v->id] = output_v->shape;
         auto* output_data        = new NodeData(node_ptr, out_idx++, 0, output_v->id);
         if (fetch_var_ids.count(output_v->id)) {
@@ -63,6 +68,7 @@ void Graph::Initialize(const frontend::Program& prog,
         node_tmp->LinkTo(output_data);
         this->RegisterNode(output_v->id, output_data);
       } else {
+        LOG(INFO) << "graph_node: ";
         node_tmp->LinkTo(graph_node->as<NodeData>());
         graph_node->as<NodeData>()->set_const(false);
         graph_node->as<NodeData>()->output_index = out_idx++;

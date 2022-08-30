@@ -22,7 +22,9 @@ namespace common {
 
 struct Type::Storage {
   Storage() = default;
-  Storage(type_t t, int b, int w) : type_(t), bits_(b), lanes_(w) {}
+  Storage(type_t t, int b, int w) : type_(t), bits_(b), lanes_(w) {
+    // LOG(INFO) << "storage: " << static_cast<int>(t) << ", " << b;
+  }
 
   type_t type_{type_t::Unk};
   cpp_type_t cpp_type_{cpp_type_t::None};

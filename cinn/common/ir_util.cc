@@ -210,8 +210,16 @@ Expr CastIfNeeded(Expr body, Type type) {
 }
 
 bool MathEqual(const Expr &a, const Expr &b) {
-  auto c = a - b;
-  c      = AutoSimplify(c);
+  auto *opri = a.As<ir::IntImm>();
+  if (opri) {
+    // LOG(INFO) << "MathEqual before: " << opri->type().bits();
+  }
+  auto c      = a - b;
+  c           = AutoSimplify(c);
+  auto *copri = c.As<ir::IntImm>();
+  if (copri) {
+    // LOG(INFO) << "MathEqual before: " << copri->type().bits();
+  }
   return is_zero(c);
 }
 

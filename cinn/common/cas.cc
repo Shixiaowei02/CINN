@@ -1587,6 +1587,11 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
 }
 
 Expr CasSimplifyMutator::operator()(Expr u) {
+  auto* opri = u.As<IntImm>();
+  if (opri) {
+    // LOG(INFO) << "IntImm: " << opri->type().bits();
+  }
+
   if (u.As<Min>() || u.As<Max>()) {
     return SimplifyMinAndMax(u);
   }

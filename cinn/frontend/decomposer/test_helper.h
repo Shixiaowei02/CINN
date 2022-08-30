@@ -60,7 +60,7 @@ Target GetTarget() {
 }
 
 template <typename T>
-void InitRandomVector(std::vector<T>* vec, size_t numel, T low = 0, T high = 1, T precision = 1e-5) {
+void InitRandomVector(std::vector<T>* vec, size_t numel, T low = 0, T high = 1, float precision = 1e-5) {
   std::random_device seed;
   std::default_random_engine engine(seed());
   std::uniform_real_distribution<double> dist(low, high);
@@ -220,8 +220,8 @@ void RunAndCheck(NetBuilder& builder,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& output_shapes,
                  CPUKernelFunc cpu_kernel_func,
-                 T low      = 0,
-                 T high     = 1,
+                 T low      = std::numeric_limits<T>::max() / 10,
+                 T high     = std::numeric_limits<T>::max() / 10 + 1,
                  float atol = 1e-8,
                  float rtol = 1e-5) {
   std::vector<std::vector<T>> input_vecs;
