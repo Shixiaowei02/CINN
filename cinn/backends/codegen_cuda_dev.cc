@@ -234,6 +234,7 @@ void CodeGenCUDA_Dev::PrintIncludes() {
   os() << "#include \"cinn_cuda_runtime_source.cuh\"\n\n";
   os() << "#ifdef __CUDACC_RTC__\n";
   os() << "typedef int int32_t;\n";
+  os() << "typedef long int int64_t;\n";
   os() << "typedef char int8_t;\n";
   os() << "#endif\n";
   os() << "\n";

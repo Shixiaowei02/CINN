@@ -353,9 +353,9 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     } else if (dtype.is_bool()) {
       temp = lang::Placeholder<bool>(input_id, in_shape);
     } else if (dtype == Int(32)) {
-      temp = lang::Placeholder<int>(input_id, in_shape);
+      temp = lang::Placeholder<int32_t>(input_id, in_shape);
     } else if (dtype == Int(64)) {
-      temp = lang::Placeholder<int>(input_id, in_shape);
+      temp = lang::Placeholder<int64_t>(input_id, in_shape);
     }
     inputs.push_back(temp);
     cinn_inputs.push_back(common::CINNValue(temp));
@@ -413,6 +413,7 @@ int GetMasterRefNode(const std::vector<Node*>& nodes) {
 }
 
 std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const std::vector<Node*>& nodes) {
+  LOG(FATAL);
   CHECK_GT(nodes.size(), 1) << "fuse nodes number must be greater than 1";
   auto& strategy   = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   auto& shape_dict = graph_->GetAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
@@ -449,6 +450,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const std::vector<Node*>& 
         std::string input_id = source_data->id();
         auto in_shape        = shape_dict.at(input_id);
         Type dtype           = dtype_dict.at(input_id);
+        LOG(INFO) << "dtype of `" << input_id << "` is " << dtype;
         CHECK(dtype == Float(32) || dtype.is_bool() || dtype == Int(32))
             << "The dtype of node " << input_id << " is not float or bool or int! Other dtype is not implemented yet.";
         ir::Tensor temp_in;
@@ -457,9 +459,9 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const std::vector<Node*>& 
         } else if (dtype.is_bool()) {
           temp_in = lang::Placeholder<bool>(input_id, in_shape);
         } else if (dtype == Int(32)) {
-          temp_in = lang::Placeholder<int>(input_id, in_shape);
+          temp_in = lang::Placeholder<int32_t>(input_id, in_shape);
         } else if (dtype == Int(64)) {
-          temp_in = lang::Placeholder<int>(input_id, in_shape);
+          temp_in = lang::Placeholder<int64_t>(input_id, in_shape);
         }
         inputs.push_back(temp_in);
         temp_inputs.push_back(temp_in);
@@ -479,6 +481,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const std::vector<Node*>& 
       VLOG(3) << "out_id " << out_id;
       auto out_shape = shape_dict.at(out_id);
       Type dtype     = dtype_dict.at(out_id);
+      LOG(INFO) << "dtype of `" << out_id << "` is " << dtype;
       output_shapes.push_back(out_shape);
       out_types.push_back(dtype);
     }
@@ -738,9 +741,10 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
         VLOG(3) << local_lowered_funcs.back()[0];
       }
     } else {
-      VLOG(3) << "fusion_groups is empty";
+      LOG(INFO) << "fusion_groups is empty";
       std::vector<ir::LoweredFunc> lowered_func;
       if (FLAGS_cinn_ir_schedule) {
+        LOG(INFO) << " --- FLAGS_cinn_ir_schedule";
         auto& dtype_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
         auto& shape_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
         for (int i = 0; i < groups.size(); i++) {
@@ -750,6 +754,7 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
           }
         }
       } else {
+        LOG(INFO) << " --- else";
         for (int i = 0; i < groups.size(); i++) {
           if (groups[i].size() == 1) {
             lowered_func = GetOpFunc(groups[i][0]);

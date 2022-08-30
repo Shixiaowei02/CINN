@@ -43,7 +43,7 @@ void Graph::Initialize(const frontend::Program& prog,
       if (!graph_node) {
         LOG(INFO) << "not graph_node";
         dtype_dict[input_v->id] = input_v->type;
-        LOG(INFO) << "dtype_dict[input_v->id] = " << input_v->type;
+        LOG(INFO) << "dtype_dict[" << input_v->id << "] = " << input_v->type;
         shape_dict[input_v->id] = input_v->shape;
         NodeData* input_data    = new NodeData(nullptr, 0, 0, input_v->id, input_v.is_const());
         input_data->LinkTo(node_tmp);
@@ -59,7 +59,7 @@ void Graph::Initialize(const frontend::Program& prog,
       if (!graph_node) {
         LOG(INFO) << "not graph_node";
         dtype_dict[output_v->id] = output_v->type;
-        LOG(INFO) << "dtype_dict[output_v->id] = " << output_v->type;
+        LOG(INFO) << "dtype_dict[" << output_v->id << "] = " << output_v->type;
         shape_dict[output_v->id] = output_v->shape;
         auto* output_data        = new NodeData(node_ptr, out_idx++, 0, output_v->id);
         if (fetch_var_ids.count(output_v->id)) {

@@ -90,7 +90,7 @@ void Compiler::CompileCudaModule(const Module& module, const std::string& code, 
         VLOG(3) << "[CUDA] source code-" << i << ":\n" << source_code.substr(DebugLogMaxLen * i, DebugLogMaxLen);
       }
     } else {
-      VLOG(3) << "[CUDA] source code:\n" << source_code;
+      LOG(INFO) << "[CUDA] source code:\n" << source_code;
     }
   } else {
     VLOG(4) << "Write to " << FLAGS_cinn_source_code_save_path;
