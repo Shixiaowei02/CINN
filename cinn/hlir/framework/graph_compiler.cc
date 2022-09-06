@@ -357,6 +357,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     } else if (dtype == Int(64)) {
       temp = lang::Placeholder<int64_t>(input_id, in_shape);
     }
+    // LOG(INFO) << "input_id = " << input_id;
     inputs.push_back(temp);
     cinn_inputs.push_back(common::CINNValue(temp));
   }
@@ -387,6 +388,9 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
         !stages[temp.as_tensor_ref()]->inlined()) {
       inputs.push_back(temp.as_tensor_ref());
     }
+  }
+  for (auto& input : inputs) {
+    LOG(INFO) << "input.name = " << input->name;
   }
 
   auto func = lang::LowerVec(GetOrGenFullFuncName(GenOpFuncName(node)), stages, inputs, {}, {}, nullptr, this->target_);

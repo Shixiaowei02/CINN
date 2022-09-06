@@ -380,7 +380,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(Expr fn_body) 
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
     bool is_output    = teller.IsWrite(tensor->name);
-    VLOG(1) << "tensor argument " << tensor->name << " buffer " << tensor->buffer->name;
+    LOG(INFO) << "tensor argument " << tensor->name << " buffer " << tensor->buffer->name;
 
     // avoid duplicate
     if (!tensor_node->buffer.defined()) continue;
@@ -399,7 +399,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(Expr fn_body) 
     arg_names.insert(tensor_node->buffer->name);
 
     auto io = is_output ? ir::Argument::IO::kOutput : ir::Argument::IO::kInput;
-    VLOG(3) << "Collect " << (is_output ? "W" : "R") << " argument " << tensor->buffer->name;
+    LOG(INFO) << "Collect " << (is_output ? "W" : "R") << " argument " << tensor->buffer->name;
     args.emplace_back(tensor_node->buffer, io);
   }
 
@@ -409,6 +409,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(Expr fn_body) 
 std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(Expr func_iterator,
                                                               std::vector<ir::Tensor> temp_tensors) {
   CheckArgsUnique();
+  LOG(INFO) << "func_iterator: " << func_iterator;
 
   std::vector<ir::Argument> in_args;
   std::vector<ir::Argument> out_args;
@@ -434,41 +435,40 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(Expr func_iterator
   for (auto& i : all_tensors) {
     auto* tensor = i.as_tensor();
     all_tensor_names.insert(tensor->name);
-    VLOG(3) << "In all_tensors, it has : " << tensor->name;
     if (!stages_[tensor]->meta.tensors_to_share_buffer_with.empty()) {
       for (auto& i : stages_[tensor]->meta.tensors_to_share_buffer_with) {
         all_tensor_names.insert(i);
-        VLOG(3) << "And its share_buffer_tensor is : " << i;
+        LOG(INFO) << "And its share_buffer_tensor is : " << i;
       }
     }
-    VLOG(3) << "In all_tensors, it has : " << tensor->name;
+    LOG(INFO) << "In all_tensors, it has : " << tensor->name;
   }
   for (auto& i : all_vars) {
     auto* var = i.as_var();
-    VLOG(3) << "In all_vars, it has : " << var->name;
+    LOG(INFO) << "In all_vars, it has : " << var->name;
   }
 
   for (auto& i : scalar_args_) {
-    VLOG(3) << "In scalar_args_, var has : " << i->name;
+    LOG(INFO) << "In scalar_args_, var has : " << i->name;
   }
 
   std::set<std::string> temp_tensor_names;
 
   for (auto& i : temp_tensors) {
-    VLOG(3) << "In temp_tensors, it has : " << i->name;
+    LOG(INFO) << "In temp_tensors, it has : " << i->name;
     temp_tensor_names.insert(i->name);
   }
 
   for (auto& tensor : tensor_args_) {
-    VLOG(3) << "In tensor_args_, it has : " << tensor->name;
+    LOG(INFO) << "In tensor_args_, it has : " << tensor->name;
     if (temp_tensor_names.count(tensor->name) > 0) continue;
     if (all_tensor_names.count(tensor->name) == 0) continue;
     bool is_output = teller.IsWrite(tensor->name);
-    VLOG(3) << "tensor argument " << tensor->name << " buffer " << tensor->buffer->name;
+    LOG(INFO) << "tensor argument " << tensor->name << " buffer " << tensor->buffer->name;
 
     // avoid duplicate
     if (!tensor->buffer.defined()) {
-      VLOG(3) << "tensor->buffer is not defined";
+      LOG(INFO) << "tensor->buffer is not defined";
       continue;
     }
     // if a argument is already marked as kInput, mark it as kOutput and move it to the back.
@@ -548,6 +548,9 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
   std::vector<ir::LoweredFunc> result;
   int num_func = 0;
   for (auto& func_iterator : func_body) {
+    LOG(INFO) << "all iter: " << func_iterator;
+  }
+  for (auto& func_iterator : func_body) {
     if (support_ir_schedule_) {
       // add ScheduleBlockRealize
       func_iterator = ir::ScheduleBlockRealize::Make(
@@ -621,17 +624,19 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
       if (num_func > 0) {
         new_fn_name += "_" + std::to_string(num_func);
       }
-      VLOG(3) << "Making func :" << new_fn_name;
+      LOG(INFO) << "Making func :" << new_fn_name;
       for (auto& i : func_args2) {
-        VLOG(3) << "func_args2 is : " << i.name();
+        LOG(INFO) << "func_args2 is : " << i.name();
       }
       for (auto& i : temp_buffers) {
-        VLOG(3) << "temp_buffers is : " << i->name;
+        LOG(INFO) << "temp_buffers is : " << i->name;
       }
+      LOG(INFO) << "_LoweredFunc_::Make";
       func = ir::_LoweredFunc_::Make(new_fn_name, func_args2, func_iterator, temp_buffers);
     } else {
       auto func_args = GenerateFunctionArgumentList(func_iterator);
-      func           = ir::_LoweredFunc_::Make(fn_name_, func_args, func_iterator, temp_buffers);
+      LOG(INFO) << "_LoweredFunc_::Make";
+      func = ir::_LoweredFunc_::Make(fn_name_, func_args, func_iterator, temp_buffers);
     }
 
     // some necessary modification.
@@ -784,23 +789,30 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
+  /*
   {  // Initialize the graph
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
     tensors.insert(std::end(tensors), temp_tensor_args.begin(), temp_tensor_args.end());
 
-    compu_graph_ = CreateCompGraph(tensors, stages, false /*inline_hide*/);
+    compu_graph_ = CreateCompGraph(tensors, stages, false);
 
-    VLOG(1) << "compu_graph:\n" << compu_graph_->Visualize();
+    LOG(INFO) << "compu_graph:\n" << compu_graph_->Visualize();
   }
-
+  */
   // Todo: Here insert auto syncthreads() @haoze
 
   {  // update schedule.
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());
+    for (auto& tensor : tensor_args) {
+      LOG(INFO) << "lower impl tensor_args: " << tensor->name;
+    }
     tensors.insert(std::end(tensors), temp_tensor_args_.begin(), temp_tensor_args_.end());
+    for (auto& tensor : temp_tensor_args_) {
+      LOG(INFO) << "lower impl temp_tensor_args_: " << tensor->name;
+    }
     compu_graph_ = CreateCompGraph(tensors, stages, true /*inline_hide*/);
 
-    VLOG(1) << "Computation Graph:\n" << compu_graph_->Visualize();
+    LOG(INFO) << "Computation Graph:\n" << compu_graph_->Visualize();
   }
 }
 

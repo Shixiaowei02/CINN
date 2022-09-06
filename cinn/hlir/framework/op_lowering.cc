@@ -172,6 +172,7 @@ std::vector<ir::LoweredFunc> OpLowerer::IRLowerOp(IRComputeFunction compute,
 
   auto func_body    = ir_sch.GetModule().GetExprs().at(0);
   auto temp_buffers = lang::GetTempBuffers(arg_tensors, stages, func_body);
+  LOG(INFO) << "_LoweredFunc_::Make";
   auto func =
       ir::_LoweredFunc_::Make(group->GetFuncName(), func_args, ir_sch.GetModule().GetExprs().at(0), temp_buffers);
   func->PrepareBufferCastExprs();
@@ -1141,7 +1142,8 @@ std::vector<ir::LoweredFunc> OpLowerer::IRLowerOpaqueOp(GroupPtr& group) {
   for (int i = 0; i < expr_pack.size(); i++) {
     ir::Expr func_body = expr_pack[0];
     auto temp_buffers  = lang::GetTempBuffers(inputs, stages, func_body);
-    auto function      = ir::_LoweredFunc_::Make(group->GetFuncName(), args, func_body, temp_buffers);
+    LOG(INFO) << "_LoweredFunc_::Make";
+    auto function = ir::_LoweredFunc_::Make(group->GetFuncName(), args, func_body, temp_buffers);
     function->PrepareBufferCastExprs();
     res.push_back(function);
   }

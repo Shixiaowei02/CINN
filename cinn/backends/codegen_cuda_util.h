@@ -116,6 +116,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                                            ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
                                            ir::Argument(kernel_stream, ir::Argument::IO::kOutput)};
 
+    LOG(INFO) << "_LoweredFunc_::Make";
     return ir::_LoweredFunc_::Make(func->name, arguments, call_extern_api, {});
   }
 

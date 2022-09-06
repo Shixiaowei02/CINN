@@ -64,6 +64,12 @@ void _LoweredFunc_::CheckValid() const {
   int out_count = 0;
   int in_count  = 0;
   for (auto& arg : args) {
+    if (arg.is_input()) {
+      LOG(INFO) << "input arg: " << arg.name();
+    }
+    if (arg.is_output()) {
+      LOG(INFO) << "output arg: " << arg.name();
+    }
     in_count += arg.is_input();
     out_count += arg.is_output();
   }

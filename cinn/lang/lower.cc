@@ -139,6 +139,7 @@ ir::LoweredFunc Lower(const std::string& name,
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   auto ctrl_deps = CollectTempTensorsFromCtrlDepends(stages, tensor_args);
   ctrl_deps.insert(temp_tensors.begin(), temp_tensors.end());
+  LOG(INFO) << "generate lower_impl_instance";
   auto lower_impl_instance = detail::LowerImpl(name,
                                                stages,
                                                tensor_args,
@@ -189,6 +190,7 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   auto ctrl_deps = CollectTempTensorsFromCtrlDepends(stages, tensor_args);
   ctrl_deps.insert(temp_tensors.begin(), temp_tensors.end());
+  LOG(INFO) << "generate lower_impl_instance";
   auto lower_impl_instance = detail::LowerImpl(name,
                                                stages,
                                                tensor_args,
