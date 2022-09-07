@@ -122,6 +122,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
                                               const std::vector<Type> &out_type,
                                               const std::vector<std::vector<int>> &output_shapes,
                                               const Target &target) {
+  LOG(INFO) << "----- StrategyForConv2d";
   std::vector<int> padding({0, 0});
   std::vector<int> stride({1, 1});
   std::vector<int> dilation({1, 1});
@@ -199,28 +200,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
                                    tensor_name,
                                    target);
         } else {
-#ifdef CINN_WITH_MKLDNN
-          out = pe::Conv2d_NCHW_MKLDNN(A.as_tensor_ref(),
-                                       B.as_tensor_ref(),
-                                       padding[0],
-                                       padding[1],
-                                       stride[0],
-                                       stride[1],
-                                       dilation[0],
-                                       dilation[1],
-                                       tensor_name);
-#else
-          out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                   B.as_tensor_ref(),
-                                   padding[0],
-                                   padding[1],
-                                   stride[0],
-                                   stride[1],
-                                   dilation[0],
-                                   dilation[1],
-                                   key,
-                                   tensor_name);
-#endif
+          LOG(FATAL);
         }
       } else {
         if (conv_type == "forward") {
@@ -235,14 +215,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
                                 tensor_name);
           out.push_back(B.as_tensor_ref());
         } else {
-#ifdef CINN_WITH_CUDNN
-          // as backward_data and backward_filter is not support now, we built a fake op to instead.
-          // as the runtime use cudnn to compute the conv2d, so this fake op is not been called.
-          // When cinn support backward_filter/backward_data code gen, this code is to be removed.
-          out = pe::Identity(A.as_tensor_ref());
-          out.push_back(A.as_tensor_ref());
-          out.push_back(B.as_tensor_ref());
-#endif
+          LOG(FATAL);
         }
       }
     } else if (data_format == "NHWC") {
@@ -274,6 +247,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
 
   framework::CINNSchedule conv2d_schedule([=](lang::Args args, lang::RetValue *ret) {
     if (FLAGS_cinn_ir_schedule) {
+      LOG(INFO) << "new scheduler!!";
       CHECK(!args.empty()) << "The input argument of conv2d schedule is empty! Please check.\n";
       CINNValuePack arg_pack = args[0];
       std::vector<Expr> vec_ast;
@@ -289,6 +263,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
       ir_sch.MergeExprs();
       if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDNN
+        LOG(INFO) << "----- CINN_WITH_CUDNN";
         // If conv_type is backward_filter or backward_data, we built a fake op.
         // As runtime use cudnn to compute conv2d, this fake op is not to be called.
         // When cinn support backward_filter/backward_data code gen, this code is to be removed.
@@ -302,6 +277,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
 #endif
         int expr_size = vec_ast.size();
         if (expr_size == 2) {
+          LOG(INFO) << "expr_size == 2";
           pe::IRCudaScheduleConv(ir_sch, target);
           VLOG(3) << "After IRCudaScheduleConv, arg_pack[0] is : " << ir_sch.GetModule().GetExprs().at(0);
           std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -315,12 +291,14 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
       }
       LOG(FATAL) << "This target [" << target << "] is not supported yet.";
     } else {
+      LOG(INFO) << "old scheduler!!";
       CHECK(!args.empty()) << "The input argument of conv2d schedule is empty! Please check.\n";
       CINNValuePack arg_pack = args[0];
       CHECK(arg_pack.size() == 4UL || arg_pack.size() == 3UL || arg_pack.size() == 6UL || arg_pack.size() == 13UL);
       poly::StageMap stages = arg_pack.back();
       if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDNN
+        LOG(INFO) << "--- CINN_WITH_CUDNN";
         // If conv_type is backward_filter or backward_data, we built a fake op.
         // As runtime use cudnn to compute conv2d, this fake op is not to be called.
         // When cinn support backward_filter/backward_data code gen, this code is to be removed.
@@ -329,9 +307,12 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.front(), target);
           *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
           return;
+        } else {
+          LOG(FATAL) << "conv_type is " << conv_type;
         }
 #endif
         if (arg_pack.size() == 4UL) {
+          LOG(INFO) << "arg_pack.size() == 4UL";
           Expr Out             = arg_pack[0];
           Expr input_pad       = arg_pack[1];
           Expr weights         = arg_pack[2];
@@ -346,6 +327,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           *ret        = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
           return;
         } else if (arg_pack.size() == 13UL) {
+          LOG(INFO) << "arg_pack.size() == 13UL";
           Expr wino_weights_dilation          = arg_pack[0];
           Expr wino_input_pad                 = arg_pack[1];
           Expr wino_A                         = arg_pack[2];

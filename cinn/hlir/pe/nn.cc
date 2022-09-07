@@ -202,6 +202,7 @@ std::vector<ir::Tensor> Conv2d_NCHW(const ir::Tensor &input,
                                     int dilation_w,
                                     const std::string &output_name,
                                     bool choose_direct_compute) {
+  LOG(INFO) << "----- Conv2d_NCHW";
   CHECK_EQ(input->shape.size(), 4U) << "Input's dimension of Conv2d_NCHW op is not 4! Please check.";
   CHECK_EQ(weights->shape.size(), 4U) << "Weight's dimension of Conv2d_NCHW op is not 4! Please check.";
   std::vector<int> output_shape_int;

@@ -340,7 +340,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
   std::vector<ir::Tensor> inputs;
   std::vector<common::CINNValue> cinn_inputs;
   std::vector<std::vector<int>> output_shapes;
-  VLOG(3) << "GetOpFunc of op " << node->id();
+  LOG(INFO) << "GetOpFunc of op " << node->id();
   for (auto& i : node->inlinks_in_order(true)) {
     std::string input_id = i->source()->as<NodeData>()->id();
     auto in_shape        = shape_dict.at(input_id);
@@ -357,15 +357,16 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     } else if (dtype == Int(64)) {
       temp = lang::Placeholder<int64_t>(input_id, in_shape);
     }
-    // LOG(INFO) << "input_id = " << input_id;
+    LOG(INFO) << "inlinks temp = " << temp << ", " << temp->name;
     inputs.push_back(temp);
     cinn_inputs.push_back(common::CINNValue(temp));
   }
   std::vector<Type> out_types;
   for (auto& out : node->outlinks_in_order(true)) {
     std::string out_id = out->sink()->safe_as<NodeData>()->id();
-    auto out_shape     = shape_dict.at(out_id);
-    Type dtype         = dtype_dict.at(out_id);
+    LOG(INFO) << "out_id = " << out_id;
+    auto out_shape = shape_dict.at(out_id);
+    Type dtype     = dtype_dict.at(out_id);
     output_shapes.push_back(out_shape);
     out_types.push_back(dtype);
   }
@@ -373,16 +374,21 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
   auto impl = OpStrategy::SelectImpl(strategy[node->op()](node->attrs, inputs, out_types, output_shapes, target_));
 
   common::CINNValuePack C = impl->fcompute(common::CINNValuePack{cinn_inputs});
+  const ir::Expr& expr    = C[0];
   poly::StageMap stages   = C.back();
   // make sure all the tensors in the stages before schedule launch.
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
+    LOG(INFO) << "compute temp = " << temp;
+    LOG(INFO) << "debug compute schedule body: " << temp.as_tensor()->body();
     stages->InsertLazily(temp.as_tensor_ref());
   }
 
   C = impl->fschedule(C);
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
+    LOG(INFO) << "schedule temp = " << temp << ", " << temp.as_tensor_ref()->name;
+    LOG(INFO) << "debug schedule body: " << temp.as_tensor()->body();
     // checkout whether the tensor is with buffer.
     if ((!temp.as_tensor_ref()->buffer.defined() || this->target_ != common::DefaultNVGPUTarget()) &&
         !stages[temp.as_tensor_ref()]->inlined()) {

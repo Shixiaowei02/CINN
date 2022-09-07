@@ -122,6 +122,7 @@ std::vector<ir::LoweredFunc> OpLowerer::IRLowerOp(IRComputeFunction compute,
       ast_exprs.insert(ast_exprs.end(), exprs.begin(), exprs.end());
     }
   }
+  LOG(INFO) << "ast_exprs.size = " << ast_exprs.size();
   ir::ModuleExpr mod_expr(ast_exprs);
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();

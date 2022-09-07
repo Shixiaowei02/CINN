@@ -70,7 +70,7 @@ CreateNVMemory(int M, int N) {
 
   return std::make_tuple(Ad, Bd, Cd, host_data1, host_data2, host_data3);
 }
-
+/*
 TEST(CodeGenCUDA, basic) {
   Expr M(1);
   Expr N(200);
@@ -167,7 +167,7 @@ TEST(CodeGenCUDA2, test_of_cacheread) {
     }
   }
 }
-
+*/
 TEST(CodeGenCUDA2, test_of_splitcudakernel) {
   Context::Global().ResetNameId();
   Expr M(100);
@@ -245,7 +245,7 @@ void __launch_bounds__(200) elementwise_mul_and_add_1(const float* __restrict__ 
 )ROC";
   ASSERT_EQ(utils::Trim(source_target), source_code);
 }
-
+/*
 TEST(CodeGenCUDA2, test_of_splitouter) {
   Context::Global().ResetNameId();
   Expr M(100);
@@ -290,13 +290,16 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(5) elementwise_add_splitouter(const float* __restrict__ X, const float* __restrict__ Y, float* __restrict__ C)
+void __launch_bounds__(5) elementwise_add_splitouter(const float* __restrict__ X, const float* __restrict__ Y, float*
+__restrict__ C)
 {
   if (((int)blockIdx.x < 20)) {
     if (((int)threadIdx.x < 5)) {
       for (int32_t j_outer = 0; j_outer < 17; j_outer += 1) {
         for (int32_t j_inner = 0; j_inner < cinn_nvgpu_min_fp32(6, (100 + (-6 * j_outer))); j_inner += 1) {
-          C[((500 * (int)blockIdx.x) + ((6 * j_outer) + ((100 * (int)threadIdx.x) + j_inner)))] = (X[((500 * (int)blockIdx.x) + ((6 * j_outer) + ((100 * (int)threadIdx.x) + j_inner)))] * Y[((500 * (int)blockIdx.x) + ((6 * j_outer) + ((100 * (int)threadIdx.x) + j_inner)))]);
+          C[((500 * (int)blockIdx.x) + ((6 * j_outer) + ((100 * (int)threadIdx.x) + j_inner)))] = (X[((500 *
+(int)blockIdx.x) + ((6 * j_outer) + ((100 * (int)threadIdx.x) + j_inner)))] * Y[((500 * (int)blockIdx.x) + ((6 *
+j_outer) + ((100 * (int)threadIdx.x) + j_inner)))]);
         };
       };
     };
@@ -664,7 +667,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(224) schedule_conv2d_0(const float* __restrict__ X, const float* __restrict__ Y, float* __restrict__ COD)
+void __launch_bounds__(224) schedule_conv2d_0(const float* __restrict__ X, const float* __restrict__ Y, float*
+__restrict__ COD)
 {
   __shared__ float _Y_read_cache [ 256 ];
   float _COD_write_cache [ 2 ];
@@ -685,23 +689,28 @@ void __launch_bounds__(224) schedule_conv2d_0(const float* __restrict__ X, const
             {
               __syncthreads();
               if (((int)threadIdx.z < 8)) {
-                input_pad_0_read_cache[((2 * (int)threadIdx.x) + (28 * (int)threadIdx.z))] = X[((56 * (int)blockIdx.y) + ((6272 * rc_outer) + ((2 * (int)threadIdx.x) + (784 * (int)threadIdx.z))))];
+                input_pad_0_read_cache[((2 * (int)threadIdx.x) + (28 * (int)threadIdx.z))] = X[((56 * (int)blockIdx.y) +
+((6272 * rc_outer) + ((2 * (int)threadIdx.x) + (784 * (int)threadIdx.z))))];
               };
             };
             for (int32_t rc_inner = 0; rc_inner < 2; rc_inner += 1) {
               if (((int)threadIdx.x < 8)) {
-                Y_read_cache[(((int)threadIdx.x / 2) + ((8 * ((int)threadIdx.x & 1)) + ((4 * rc_inner) + (16 * (int)threadIdx.z))))] = Y[(((int)threadIdx.x / 2) + ((128 * ((int)threadIdx.x & 1)) + ((4096 * (int)blockIdx.z) + ((4 * rc_inner) + ((8 * rc_outer) + (256 * (int)threadIdx.z))))))];
+                Y_read_cache[(((int)threadIdx.x / 2) + ((8 * ((int)threadIdx.x & 1)) + ((4 * rc_inner) + (16 *
+(int)threadIdx.z))))] = Y[(((int)threadIdx.x / 2) + ((128 * ((int)threadIdx.x & 1)) + ((4096 * (int)blockIdx.z) + ((4 *
+rc_inner) + ((8 * rc_outer) + (256 * (int)threadIdx.z))))))];
               };
             };
             __syncthreads();
             for (int32_t rc_inner = 0; rc_inner < 8; rc_inner += 1) {
               for (int32_t j_inner = 0; j_inner < 2; j_inner += 1) {
-                COD_write_cache[j_inner] = (COD_write_cache[j_inner] + (input_pad_0_read_cache[((28 * rc_inner) + (2 * (int)threadIdx.x))] * Y_read_cache[((8 * j_inner) + ((16 * (int)threadIdx.z) + rc_inner))]));
+                COD_write_cache[j_inner] = (COD_write_cache[j_inner] + (input_pad_0_read_cache[((28 * rc_inner) + (2 *
+(int)threadIdx.x))] * Y_read_cache[((8 * j_inner) + ((16 * (int)threadIdx.z) + rc_inner))]));
               };
             };
           };
           for (int32_t rc_outer = 0; rc_outer < 2; rc_outer += 1) {
-            COD[((14 * (int)blockIdx.y) + ((6272 * (int)blockIdx.z) + ((196 * rc_outer) + ((392 * (int)threadIdx.z) + (int)threadIdx.x))))] = COD_write_cache[rc_outer];
+            COD[((14 * (int)blockIdx.y) + ((6272 * (int)blockIdx.z) + ((196 * rc_outer) + ((392 * (int)threadIdx.z) +
+(int)threadIdx.x))))] = COD_write_cache[rc_outer];
           };
         }
         };
@@ -810,7 +819,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(128) schedule_conv2d_1(const float* __restrict__ X, const float* __restrict__ Y, float* __restrict__ Conv2d_out)
+void __launch_bounds__(128) schedule_conv2d_1(const float* __restrict__ X, const float* __restrict__ Y, float*
+__restrict__ Conv2d_out)
 {
   __shared__ float _input_pad_0_read_cache [ 76 ];
   __shared__ float _Y_read_cache [ 112 ];
@@ -833,22 +843,30 @@ void __launch_bounds__(128) schedule_conv2d_1(const float* __restrict__ X, const
                 {
                   __syncthreads();
                   if (((int)threadIdx.z < 7)) {
-                    input_pad_0_read_cache[((2 * (int)threadIdx.x) + (int)threadIdx.z)] = ((((((((2 * (int)blockIdx.y) + ry_outer) >= 3) && (((2 * (int)blockIdx.y) + ry_outer) < 227)) && (((32 * a_outer_outer_inner) + ((2 * (int)threadIdx.x) + (int)threadIdx.z)) >= 3)) && (((32 * a_outer_outer_inner) + ((2 * (int)threadIdx.x) + (int)threadIdx.z)) < 227))) ? X[(-675 + ((32 * a_outer_outer_inner) + ((448 * (int)blockIdx.y) + ((50176 * rc_outer) + ((224 * ry_outer) + ((2 * (int)threadIdx.x) + (int)threadIdx.z))))))] : 0);
+                    input_pad_0_read_cache[((2 * (int)threadIdx.x) + (int)threadIdx.z)] = ((((((((2 * (int)blockIdx.y) +
+ry_outer) >= 3) && (((2 * (int)blockIdx.y) + ry_outer) < 227)) && (((32 * a_outer_outer_inner) + ((2 * (int)threadIdx.x)
++ (int)threadIdx.z)) >= 3)) && (((32 * a_outer_outer_inner) + ((2 * (int)threadIdx.x) + (int)threadIdx.z)) < 227))) ?
+X[(-675 + ((32 * a_outer_outer_inner) + ((448 * (int)blockIdx.y) + ((50176 * rc_outer) + ((224 * ry_outer) + ((2 *
+(int)threadIdx.x) + (int)threadIdx.z))))))] : 0);
                   };
                 };
                 if (((int)threadIdx.x < 14)) {
-                  Y_read_cache[(((int)threadIdx.x / 2) + ((7 * ((int)threadIdx.x & 1)) + (14 * (int)threadIdx.z)))] = Y[(((int)threadIdx.x / 2) + ((147 * ((int)threadIdx.x & 1)) + ((2352 * j_outer_outer_inner) + ((49 * rc_outer) + ((7 * ry_outer) + (294 * (int)threadIdx.z))))))];
+                  Y_read_cache[(((int)threadIdx.x / 2) + ((7 * ((int)threadIdx.x & 1)) + (14 * (int)threadIdx.z)))] =
+Y[(((int)threadIdx.x / 2) + ((147 * ((int)threadIdx.x & 1)) + ((2352 * j_outer_outer_inner) + ((49 * rc_outer) + ((7 *
+ry_outer) + (294 * (int)threadIdx.z))))))];
                 };
                 __syncthreads();
                 for (int32_t rx_inner = 0; rx_inner < 7; rx_inner += 1) {
                   for (int32_t j_inner = 0; j_inner < 2; j_inner += 1) {
-                    Conv2d_out_write_cache[j_inner] = (Conv2d_out_write_cache[j_inner] + (input_pad_0_read_cache[((2 * (int)threadIdx.x) + rx_inner)] * Y_read_cache[((7 * j_inner) + ((14 * (int)threadIdx.z) + rx_inner))]));
+                    Conv2d_out_write_cache[j_inner] = (Conv2d_out_write_cache[j_inner] + (input_pad_0_read_cache[((2 *
+(int)threadIdx.x) + rx_inner)] * Y_read_cache[((7 * j_inner) + ((14 * (int)threadIdx.z) + rx_inner))]));
                   };
                 };
               };
             };
             for (int32_t rc_outer = 0; rc_outer < 2; rc_outer += 1) {
-              Conv2d_out[((16 * a_outer_outer_inner) + ((112 * (int)blockIdx.y) + ((200704 * j_outer_outer_inner) + ((12544 * rc_outer) + ((25088 * (int)threadIdx.z) + (int)threadIdx.x)))))] = Conv2d_out_write_cache[rc_outer];
+              Conv2d_out[((16 * a_outer_outer_inner) + ((112 * (int)blockIdx.y) + ((200704 * j_outer_outer_inner) +
+((12544 * rc_outer) + ((25088 * (int)threadIdx.z) + (int)threadIdx.x)))))] = Conv2d_out_write_cache[rc_outer];
             };
           }
           };
@@ -1046,7 +1064,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(200) elementwise_add(const float* __restrict__ A, const float* __restrict__ B, float* __restrict__ C)
+void __launch_bounds__(200) elementwise_add(const float* __restrict__ A, const float* __restrict__ B, float*
+__restrict__ C)
 {
   float _B_read_cache [ 1 ];
   float* B_read_cache = _B_read_cache;
@@ -1058,7 +1077,8 @@ void __launch_bounds__(200) elementwise_add(const float* __restrict__ A, const f
   __syncthreads();
   if (((int)blockIdx.x < 100)) {
     if (((int)threadIdx.x < 200)) {
-      C[((200 * (int)blockIdx.x) + (int)threadIdx.x)] = (A[((200 * (int)blockIdx.x) + (int)threadIdx.x)] * B_read_cache[0]);
+      C[((200 * (int)blockIdx.x) + (int)threadIdx.x)] = (A[((200 * (int)blockIdx.x) + (int)threadIdx.x)] *
+B_read_cache[0]);
     };
   };
 }
@@ -1155,7 +1175,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(4) mul_cache_write(const float* __restrict__ A1, const float* __restrict__ B1, float* __restrict__ C1)
+void __launch_bounds__(4) mul_cache_write(const float* __restrict__ A1, const float* __restrict__ B1, float*
+__restrict__ C1)
 {
   float _C1_write_cache [ 2 ];
   float* C1_write_cache = _C1_write_cache;
@@ -1166,11 +1187,13 @@ void __launch_bounds__(4) mul_cache_write(const float* __restrict__ A1, const fl
         for (int32_t j_inner = 0; j_inner < 2; j_inner += 1) {
           C1_write_cache__reduce_init[j_inner] = 0;
           for (int32_t k1 = 0; k1 < 32; k1 += 1) {
-            C1_write_cache[j_inner] = (C1_write_cache[j_inner] + (A1[((128 * (int)blockIdx.x) + ((32 * (int)threadIdx.x) + k1))] * B1[((32 * j_inner) + ((64 * j_outer) + k1))]));
+            C1_write_cache[j_inner] = (C1_write_cache[j_inner] + (A1[((128 * (int)blockIdx.x) + ((32 * (int)threadIdx.x)
++ k1))] * B1[((32 * j_inner) + ((64 * j_outer) + k1))]));
           };
         };
         for (int32_t j_inner = 0; j_inner < 2; j_inner += 1) {
-          C1[((128 * (int)blockIdx.x) + ((2 * j_outer) + ((32 * (int)threadIdx.x) + j_inner)))] = C1_write_cache[j_inner];
+          C1[((128 * (int)blockIdx.x) + ((2 * j_outer) + ((32 * (int)threadIdx.x) + j_inner)))] =
+C1_write_cache[j_inner];
         };
       };
     };
@@ -1966,7 +1989,8 @@ void __launch_bounds__(10) fn0(const float* __restrict__ A, const float* __restr
         A_read_cache[j] = A[((200 * (int)blockIdx.x) + ((2000 * (int)threadIdx.x) + j))];
       };
       for (int32_t j = 0; j < 200; j += 1) {
-        C[((200 * (int)blockIdx.x) + ((2000 * (int)threadIdx.x) + j))] = (A_read_cache[j] + B[((200 * (int)blockIdx.x) + ((2000 * (int)threadIdx.x) + j))]);
+        C[((200 * (int)blockIdx.x) + ((2000 * (int)threadIdx.x) + j))] = (A_read_cache[j] + B[((200 * (int)blockIdx.x) +
+((2000 * (int)threadIdx.x) + j))]);
       };
     }
     };
@@ -2102,7 +2126,8 @@ void __launch_bounds__(98) fn1(const float* __restrict__ A, const float* __restr
         for (int32_t i_at = 0; i_at < 3; i_at += 1) {
           A_read_cache[i_at] = A[((10 * (int)blockIdx.x) + ((200 * i_at) + ((200 * (int)threadIdx.x) + j_inner)))];
         };
-        C[((10 * (int)blockIdx.x) + ((200 * (int)threadIdx.x) + j_inner))] = (A_read_cache[0] + (A_read_cache[1] + (A_read_cache[2] + B[((10 * (int)blockIdx.x) + ((200 * (int)threadIdx.x) + j_inner))])));
+        C[((10 * (int)blockIdx.x) + ((200 * (int)threadIdx.x) + j_inner))] = (A_read_cache[0] + (A_read_cache[1] +
+(A_read_cache[2] + B[((10 * (int)blockIdx.x) + ((200 * (int)threadIdx.x) + j_inner))])));
       };
     };
   };
@@ -2207,10 +2232,12 @@ void __launch_bounds__(95) fn_cacheread_computeat1(const float* __restrict__ AA,
     {
       for (int32_t i_at = 0; i_at < 6; i_at += 1) {
         for (int32_t j_at = 0; j_at < 6; j_at += 1) {
-          AA_read_cache[((100 * i_at) + (j_at + (int)threadIdx.x))] = AA[((100 * (int)blockIdx.x) + ((100 * i_at) + (j_at + (int)threadIdx.x)))];
+          AA_read_cache[((100 * i_at) + (j_at + (int)threadIdx.x))] = AA[((100 * (int)blockIdx.x) + ((100 * i_at) +
+(j_at + (int)threadIdx.x)))];
         };
       };
-      C[((95 * (int)blockIdx.x) + (int)threadIdx.x)] = (AA_read_cache[(int)threadIdx.x] + (AA_read_cache[(202 + (int)threadIdx.x)] + AA_read_cache[(505 + (int)threadIdx.x)]));
+      C[((95 * (int)blockIdx.x) + (int)threadIdx.x)] = (AA_read_cache[(int)threadIdx.x] + (AA_read_cache[(202 +
+(int)threadIdx.x)] + AA_read_cache[(505 + (int)threadIdx.x)]));
     }
     };
   };
@@ -2310,7 +2337,8 @@ void __launch_bounds__(5) fn_cacheread_computeat2(const float* __restrict__ AA, 
       for (int32_t j_inner = 0; j_inner < 10; j_inner += 1) {
         for (int32_t i_at = 0; i_at < 6; i_at += 1) {
           for (int32_t j_at = 0; j_at < 6; j_at += 1) {
-            AA_read_cache[((6 * i_at) + j_at)] = AA[((100 * (int)blockIdx.x) + ((100 * i_at) + ((10 * (int)threadIdx.x) + (j_at + j_inner))))];
+            AA_read_cache[((6 * i_at) + j_at)] = AA[((100 * (int)blockIdx.x) + ((100 * i_at) + ((10 * (int)threadIdx.x)
++ (j_at + j_inner))))];
           };
         };
         C[((50 * (int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))] = (AA_read_cache[30] + AA_read_cache[5]);
@@ -2549,7 +2577,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(4) cache_write_local(const float* __restrict__ A, const float* __restrict__ B, float* __restrict__ C)
+void __launch_bounds__(4) cache_write_local(const float* __restrict__ A, const float* __restrict__ B, float*
+__restrict__ C)
 {
   float _C_write_cache [ 40 ];
   float* C_write_cache = _C_write_cache;
@@ -2558,12 +2587,14 @@ void __launch_bounds__(4) cache_write_local(const float* __restrict__ A, const f
     {
       for (int32_t j_outer = 0; j_outer < 8; j_outer += 1) {
         for (int32_t j_inner = 0; j_inner < 5; j_inner += 1) {
-          C_write_cache[((5 * j_outer) + j_inner)] = (A[((160 * (int)blockIdx.x) + ((5 * j_outer) + ((40 * (int)threadIdx.x) + j_inner)))] + B[((160 * (int)blockIdx.x) + ((5 * j_outer) + ((40 * (int)threadIdx.x) + j_inner)))]);
+          C_write_cache[((5 * j_outer) + j_inner)] = (A[((160 * (int)blockIdx.x) + ((5 * j_outer) + ((40 *
+(int)threadIdx.x) + j_inner)))] + B[((160 * (int)blockIdx.x) + ((5 * j_outer) + ((40 * (int)threadIdx.x) + j_inner)))]);
         };
       };
       for (int32_t j_outer = 0; j_outer < 10; j_outer += 1) {
         for (int32_t j_inner = 0; j_inner < 4; j_inner += 1) {
-          C[((160 * (int)blockIdx.x) + ((4 * j_outer) + ((40 * (int)threadIdx.x) + j_inner)))] = C_write_cache[((4 * j_outer) + j_inner)];
+          C[((160 * (int)blockIdx.x) + ((4 * j_outer) + ((40 * (int)threadIdx.x) + j_inner)))] = C_write_cache[((4 *
+j_outer) + j_inner)];
         };
       };
     }
@@ -2635,12 +2666,15 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(4) external_function(const float* __restrict__ A, const float* __restrict__ B, float* __restrict__ C)
+void __launch_bounds__(4) external_function(const float* __restrict__ A, const float* __restrict__ B, float*
+__restrict__ C)
 {
   if (((int)blockIdx.x < 40)) {
     if (((int)threadIdx.x < 4)) {
       for (int32_t j_inner = 0; j_inner < 10; j_inner += 1) {
-        C[((40 * (int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))] = (cinn_nvgpu_tanh_fp32(A[((40 * (int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))]) + cinn_nvgpu_cos_fp32(B[((40 * (int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))]));
+        C[((40 * (int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))] = (cinn_nvgpu_tanh_fp32(A[((40 *
+(int)blockIdx.x) + ((10 * (int)threadIdx.x) + j_inner))]) + cinn_nvgpu_cos_fp32(B[((40 * (int)blockIdx.x) + ((10 *
+(int)threadIdx.x) + j_inner))]));
       };
     };
   };
@@ -2735,21 +2769,39 @@ void __launch_bounds__(128) schedule_wino_conv2d(const float* __restrict__ X, fl
       };
       for (int32_t i = 0; i < 4; i += 1) {
         for (int32_t j = 0; j < 4; j += 1) {
-          input_tile[((4 * i) + j)] = ((((((((2 * ((((int)threadIdx.x & 15) / 4) & 3)) + i) >= 1) && (((2 * ((((int)threadIdx.x & 15) / 4) & 3)) + i) < 8)) && (((2 * (((int)threadIdx.x & 15) & 3)) + j) >= 1)) && (((2 * (((int)threadIdx.x & 15) & 3)) + j) < 8))) ? X[(-8 + (((((int)threadIdx.x & 15) / 16) * 25088) + ((49 * ((int)threadIdx.x / 16)) + ((14 * ((((int)threadIdx.x & 15) / 4) & 3)) + ((2 * (((int)threadIdx.x & 15) & 3)) + ((392 * (int)blockIdx.x) + ((7 * i) + j)))))))] : 0);
+          input_tile[((4 * i) + j)] = ((((((((2 * ((((int)threadIdx.x & 15) / 4) & 3)) + i) >= 1) && (((2 *
+((((int)threadIdx.x & 15) / 4) & 3)) + i) < 8)) && (((2 * (((int)threadIdx.x & 15) & 3)) + j) >= 1)) && (((2 *
+(((int)threadIdx.x & 15) & 3)) + j) < 8))) ? X[(-8 + (((((int)threadIdx.x & 15) / 16) * 25088) + ((49 *
+((int)threadIdx.x / 16)) + ((14 * ((((int)threadIdx.x & 15) / 4) & 3)) + ((2 * (((int)threadIdx.x & 15) & 3)) + ((392 *
+(int)blockIdx.x) + ((7 * i) + j)))))))] : 0);
         };
       };
       for (int32_t i = 0; i < 4; i += 1) {
         for (int32_t j = 0; j < 4; j += 1) {
           for (int32_t r_a = 0; r_a < 4; r_a += 1) {
             for (int32_t r_b = 0; r_b < 4; r_b += 1) {
-              data_pack_write_cache[((4 * i) + j)] = (data_pack_write_cache[((4 * i) + j)] + (input_tile[((4 * r_a) + r_b)] * ((((((3 - r_a) == 0) && ((3 - i) == 0))) ? 1 : (((((3 - r_a) == 0) && ((2 - i) == 0))) ? 0 : (((((3 - r_a) == 0) && ((1 - i) == 0))) ? 0 : (((((3 - r_a) == 0) && ((-1 * i) == 0))) ? 0 : (((((2 - r_a) == 0) && ((3 - i) == 0))) ? 0 : (((((2 - r_a) == 0) && ((2 - i) == 0))) ? 1 : (((((2 - r_a) == 0) && ((1 - i) == 0))) ? 1 : (((((2 - r_a) == 0) && ((-1 * i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((3 - i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((2 - i) == 0))) ? 1 : (((((1 - r_a) == 0) && ((1 - i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((-1 * i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((3 - i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((2 - i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((1 - i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((-1 * i) == 0))) ? 1 : 1)))))))))))))))) * (((((3 - r_b) == 0) && ((3 - j) == 0))) ? 1 : (((((3 - r_b) == 0) && ((2 - j) == 0))) ? 0 : (((((3 - r_b) == 0) && ((1 - j) == 0))) ? 0 : (((((3 - r_b) == 0) && ((-1 * j) == 0))) ? 0 : (((((2 - r_b) == 0) && ((3 - j) == 0))) ? 0 : (((((2 - r_b) == 0) && ((2 - j) == 0))) ? 1 : (((((2 - r_b) == 0) && ((1 - j) == 0))) ? 1 : (((((2 - r_b) == 0) && ((-1 * j) == 0))) ? -1 : (((((1 - r_b) == 0) && ((3 - j) == 0))) ? -1 : (((((1 - r_b) == 0) && ((2 - j) == 0))) ? 1 : (((((1 - r_b) == 0) && ((1 - j) == 0))) ? -1 : (((((1 - r_b) == 0) && ((-1 * j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((3 - j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((2 - j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((1 - j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((-1 * j) == 0))) ? 1 : 1)))))))))))))))))));
+              data_pack_write_cache[((4 * i) + j)] = (data_pack_write_cache[((4 * i) + j)] + (input_tile[((4 * r_a) +
+r_b)] * ((((((3 - r_a) == 0) && ((3 - i) == 0))) ? 1 : (((((3 - r_a) == 0) && ((2 - i) == 0))) ? 0 : (((((3 - r_a) == 0)
+&& ((1 - i) == 0))) ? 0 : (((((3 - r_a) == 0) && ((-1 * i) == 0))) ? 0 : (((((2 - r_a) == 0) && ((3 - i) == 0))) ? 0 :
+(((((2 - r_a) == 0) && ((2 - i) == 0))) ? 1 : (((((2 - r_a) == 0) && ((1 - i) == 0))) ? 1 : (((((2 - r_a) == 0) && ((-1
+* i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((3 - i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((2 - i) == 0))) ? 1 : (((((1
+- r_a) == 0) && ((1 - i) == 0))) ? -1 : (((((1 - r_a) == 0) && ((-1 * i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((3 - i)
+== 0))) ? 0 : (((((-1 * r_a) == 0) && ((2 - i) == 0))) ? 0 : (((((-1 * r_a) == 0) && ((1 - i) == 0))) ? 0 : (((((-1 *
+r_a) == 0) && ((-1 * i) == 0))) ? 1 : 1)))))))))))))))) * (((((3 - r_b) == 0) && ((3 - j) == 0))) ? 1 : (((((3 - r_b) ==
+0) && ((2 - j) == 0))) ? 0 : (((((3 - r_b) == 0) && ((1 - j) == 0))) ? 0 : (((((3 - r_b) == 0) && ((-1 * j) == 0))) ? 0
+: (((((2 - r_b) == 0) && ((3 - j) == 0))) ? 0 : (((((2 - r_b) == 0) && ((2 - j) == 0))) ? 1 : (((((2 - r_b) == 0) && ((1
+- j) == 0))) ? 1 : (((((2 - r_b) == 0) && ((-1 * j) == 0))) ? -1 : (((((1 - r_b) == 0) && ((3 - j) == 0))) ? -1 : (((((1
+- r_b) == 0) && ((2 - j) == 0))) ? 1 : (((((1 - r_b) == 0) && ((1 - j) == 0))) ? -1 : (((((1 - r_b) == 0) && ((-1 * j)
+== 0))) ? 0 : (((((-1 * r_b) == 0) && ((3 - j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((2 - j) == 0))) ? 0 : (((((-1 *
+r_b) == 0) && ((1 - j) == 0))) ? 0 : (((((-1 * r_b) == 0) && ((-1 * j) == 0))) ? 1 : 1)))))))))))))))))));
             };
           };
         };
       };
       for (int32_t i = 0; i < 4; i += 1) {
         for (int32_t j = 0; j < 4; j += 1) {
-          data_pack[((16 * ((int)threadIdx.x / 16)) + (((int)threadIdx.x & 15) + ((128 * (int)blockIdx.x) + ((32768 * i) + (8192 * j)))))] = data_pack_write_cache[((4 * i) + j)];
+          data_pack[((16 * ((int)threadIdx.x / 16)) + (((int)threadIdx.x & 15) + ((128 * (int)blockIdx.x) + ((32768 * i)
++ (8192 * j)))))] = data_pack_write_cache[((4 * i) + j)];
         };
       };
     }
@@ -2763,10 +2815,22 @@ void __launch_bounds__(128) schedule_wino_conv2d_1(const float* __restrict__ Y, 
     if (((int)threadIdx.x < 128)) {
       for (int32_t i = 0; i < 4; i += 1) {
         for (int32_t j = 0; j < 4; j += 1) {
-          kernel_pack__reduce_init[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576 * i) + ((262144 * j) + (int)threadIdx.x))))] = 0;
-          for (int32_t r_kh = 0; r_kh < 3; r_kh += 1) {
-            for (int32_t r_kw = 0; r_kw < 3; r_kw += 1) {
-              kernel_pack[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576 * i) + ((262144 * j) + (int)threadIdx.x))))] = (kernel_pack[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576 * i) + ((262144 * j) + (int)threadIdx.x))))] + ((((((r_kh & 0) == 0) && ((r_kw & 0) == 0))) ? Y[((r_kw / 1) + (((r_kh / 1) * 3) + ((((int)blockIdx.x / 4) * 9) + ((589824 * ((int)blockIdx.x & 3)) + (4608 * (int)threadIdx.x)))))] : 0) * ((((((3 - i) == 0) && ((2 - r_kh) == 0))) ? 1 : (((((3 - i) == 0) && ((1 - r_kh) == 0))) ? 0 : (((((3 - i) == 0) && ((-1 * r_kh) == 0))) ? 0 : (((((2 - i) == 0) && ((2 - r_kh) == 0))) ? 0.5 : (((((2 - i) == 0) && ((1 - r_kh) == 0))) ? 0.5 : (((((2 - i) == 0) && ((-1 * r_kh) == 0))) ? 0.5 : (((((1 - i) == 0) && ((2 - r_kh) == 0))) ? 0.5 : (((((1 - i) == 0) && ((1 - r_kh) == 0))) ? -0.5 : (((((1 - i) == 0) && ((-1 * r_kh) == 0))) ? 0.5 : (((((-1 * i) == 0) && ((2 - r_kh) == 0))) ? 0 : (((((-1 * i) == 0) && ((1 - r_kh) == 0))) ? 0 : (((((-1 * i) == 0) && ((-1 * r_kh) == 0))) ? 1 : 1)))))))))))) * (((((3 - j) == 0) && ((2 - r_kw) == 0))) ? 1 : (((((3 - j) == 0) && ((1 - r_kw) == 0))) ? 0 : (((((3 - j) == 0) && ((-1 * r_kw) == 0))) ? 0 : (((((2 - j) == 0) && ((2 - r_kw) == 0))) ? 0.5 : (((((2 - j) == 0) && ((1 - r_kw) == 0))) ? 0.5 : (((((2 - j) == 0) && ((-1 * r_kw) == 0))) ? 0.5 : (((((1 - j) == 0) && ((2 - r_kw) == 0))) ? 0.5 : (((((1 - j) == 0) && ((1 - r_kw) == 0))) ? -0.5 : (((((1 - j) == 0) && ((-1 * r_kw) == 0))) ? 0.5 : (((((-1 * j) == 0) && ((2 - r_kw) == 0))) ? 0 : (((((-1 * j) == 0) && ((1 - r_kw) == 0))) ? 0 : (((((-1 * j) == 0) && ((-1 * r_kw) == 0))) ? 1 : 1)))))))))))))));
+          kernel_pack__reduce_init[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576 * i) +
+((262144 * j) + (int)threadIdx.x))))] = 0; for (int32_t r_kh = 0; r_kh < 3; r_kh += 1) { for (int32_t r_kw = 0; r_kw <
+3; r_kw += 1) { kernel_pack[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576 * i) + ((262144
+* j) + (int)threadIdx.x))))] = (kernel_pack[((((int)blockIdx.x / 4) * 512) + ((128 * ((int)blockIdx.x & 3)) + ((1048576
+* i) + ((262144 * j) + (int)threadIdx.x))))] + ((((((r_kh & 0) == 0) && ((r_kw & 0) == 0))) ? Y[((r_kw / 1) + (((r_kh /
+1) * 3) + ((((int)blockIdx.x / 4) * 9) + ((589824 * ((int)blockIdx.x & 3)) + (4608 * (int)threadIdx.x)))))] : 0) *
+((((((3 - i) == 0) && ((2 - r_kh) == 0))) ? 1 : (((((3 - i) == 0) && ((1 - r_kh) == 0))) ? 0 : (((((3 - i) == 0) && ((-1
+* r_kh) == 0))) ? 0 : (((((2 - i) == 0) && ((2 - r_kh) == 0))) ? 0.5 : (((((2 - i) == 0) && ((1 - r_kh) == 0))) ? 0.5 :
+(((((2 - i) == 0) && ((-1 * r_kh) == 0))) ? 0.5 : (((((1 - i) == 0) && ((2 - r_kh) == 0))) ? 0.5 : (((((1 - i) == 0) &&
+((1 - r_kh) == 0))) ? -0.5 : (((((1 - i) == 0) && ((-1 * r_kh) == 0))) ? 0.5 : (((((-1 * i) == 0) && ((2 - r_kh) == 0)))
+? 0 : (((((-1 * i) == 0) && ((1 - r_kh) == 0))) ? 0 : (((((-1 * i) == 0) && ((-1 * r_kh) == 0))) ? 1 : 1)))))))))))) *
+(((((3 - j) == 0) && ((2 - r_kw) == 0))) ? 1 : (((((3 - j) == 0) && ((1 - r_kw) == 0))) ? 0 : (((((3 - j) == 0) && ((-1
+* r_kw) == 0))) ? 0 : (((((2 - j) == 0) && ((2 - r_kw) == 0))) ? 0.5 : (((((2 - j) == 0) && ((1 - r_kw) == 0))) ? 0.5 :
+(((((2 - j) == 0) && ((-1 * r_kw) == 0))) ? 0.5 : (((((1 - j) == 0) && ((2 - r_kw) == 0))) ? 0.5 : (((((1 - j) == 0) &&
+((1 - r_kw) == 0))) ? -0.5 : (((((1 - j) == 0) && ((-1 * r_kw) == 0))) ? 0.5 : (((((-1 * j) == 0) && ((2 - r_kw) == 0)))
+? 0 : (((((-1 * j) == 0) && ((1 - r_kw) == 0))) ? 0 : (((((-1 * j) == 0) && ((-1 * r_kw) == 0))) ? 1 : 1)))))))))))))));
             };
           };
         };
@@ -2774,7 +2838,8 @@ void __launch_bounds__(128) schedule_wino_conv2d_1(const float* __restrict__ Y, 
     };
   };
 }__global__
-void __launch_bounds__(128) schedule_wino_conv2d_2(const float* __restrict__ X, const float* __restrict__ Y, const float* __restrict__ kernel_pack, const float* __restrict__ data_pack, float* __restrict__ bgemm)
+void __launch_bounds__(128) schedule_wino_conv2d_2(const float* __restrict__ X, const float* __restrict__ Y, const
+float* __restrict__ kernel_pack, const float* __restrict__ data_pack, float* __restrict__ bgemm)
 {
   float _data_pack_write_cache [ 16 ];
   __shared__ float _kernel_pack_0_read_cache [ 1024 ];
@@ -2802,27 +2867,36 @@ void __launch_bounds__(128) schedule_wino_conv2d_2(const float* __restrict__ X, 
               __syncthreads();
               if (((int)threadIdx.x < 8)) {
                 for (int32_t k_inner = 0; k_inner < 8; k_inner += 1) {
-                  kernel_pack_0_read_cache[((64 * (k_inner / 4)) + ((k_inner & 3) + ((128 * (int)threadIdx.x) + (4 * (int)threadIdx.y))))] = kernel_pack[((((int)blockIdx.z / 4) * 1048576) + ((512 * (k_inner / 4)) + ((262144 * ((int)blockIdx.z & 3)) + ((k_inner & 3) + ((64 * (int)blockIdx.y) + ((8192 * ci_outer) + ((1024 * (int)threadIdx.x) + (4 * (int)threadIdx.y))))))))];
+                  kernel_pack_0_read_cache[((64 * (k_inner / 4)) + ((k_inner & 3) + ((128 * (int)threadIdx.x) + (4 *
+(int)threadIdx.y))))] = kernel_pack[((((int)blockIdx.z / 4) * 1048576) + ((512 * (k_inner / 4)) + ((262144 *
+((int)blockIdx.z & 3)) + ((k_inner & 3) + ((64 * (int)blockIdx.y) + ((8192 * ci_outer) + ((1024 * (int)threadIdx.x) + (4
+* (int)threadIdx.y))))))))];
                 };
               };
             };
             if (((int)threadIdx.y < 16)) {
               for (int32_t k_inner = 0; k_inner < 2; k_inner += 1) {
-                data_pack_0_read_cache[((2 * (int)threadIdx.x) + ((16 * (int)threadIdx.y) + k_inner))] = data_pack[((((int)blockIdx.z / 4) * 32768) + ((8192 * ((int)blockIdx.z & 3)) + ((256 * ci_outer) + ((2 * (int)threadIdx.x) + ((16 * (int)threadIdx.y) + k_inner)))))];
+                data_pack_0_read_cache[((2 * (int)threadIdx.x) + ((16 * (int)threadIdx.y) + k_inner))] =
+data_pack[((((int)blockIdx.z / 4) * 32768) + ((8192 * ((int)blockIdx.z & 3)) + ((256 * ci_outer) + ((2 *
+(int)threadIdx.x) + ((16 * (int)threadIdx.y) + k_inner)))))];
               };
             };
             __syncthreads();
             for (int32_t ci_inner = 0; ci_inner < 16; ci_inner += 1) {
               for (int32_t k_inner = 0; k_inner < 4; k_inner += 1) {
                 for (int32_t a_inner = 0; a_inner < 2; a_inner += 1) {
-                  bgemm_write_cache[((2 * k_inner) + a_inner)] = (bgemm_write_cache[((2 * k_inner) + a_inner)] + (kernel_pack_0_read_cache[((64 * ci_inner) + ((4 * (int)threadIdx.y) + k_inner))] * data_pack_0_read_cache[((16 * ci_inner) + ((2 * (int)threadIdx.x) + a_inner))]));
+                  bgemm_write_cache[((2 * k_inner) + a_inner)] = (bgemm_write_cache[((2 * k_inner) + a_inner)] +
+(kernel_pack_0_read_cache[((64 * ci_inner) + ((4 * (int)threadIdx.y) + k_inner))] * data_pack_0_read_cache[((16 *
+ci_inner) + ((2 * (int)threadIdx.x) + a_inner))]));
                 };
               };
             };
           };
           for (int32_t ci_inner = 0; ci_inner < 4; ci_inner += 1) {
             for (int32_t k_inner = 0; k_inner < 2; k_inner += 1) {
-              bgemm[((((int)blockIdx.z / 4) * 32768) + ((8192 * ((int)blockIdx.z & 3)) + ((1024 * (int)blockIdx.y) + ((16 * ci_inner) + ((2 * (int)threadIdx.x) + ((64 * (int)threadIdx.y) + k_inner))))))] = bgemm_write_cache[((2 * ci_inner) + k_inner)];
+              bgemm[((((int)blockIdx.z / 4) * 32768) + ((8192 * ((int)blockIdx.z & 3)) + ((1024 * (int)blockIdx.y) +
+((16 * ci_inner) + ((2 * (int)threadIdx.x) + ((64 * (int)threadIdx.y) + k_inner))))))] = bgemm_write_cache[((2 *
+ci_inner) + k_inner)];
             };
           };
         }
@@ -2831,7 +2905,9 @@ void __launch_bounds__(128) schedule_wino_conv2d_2(const float* __restrict__ X, 
     };
   };
 }__global__
-void __launch_bounds__(128) schedule_wino_conv2d_3(const float* __restrict__ X, const float* __restrict__ Y, const float* __restrict__ kernel_pack, const float* __restrict__ data_pack, const float* __restrict__ bgemm, float* __restrict__ Winograd_Conv2d_out)
+void __launch_bounds__(128) schedule_wino_conv2d_3(const float* __restrict__ X, const float* __restrict__ Y, const
+float* __restrict__ kernel_pack, const float* __restrict__ data_pack, const float* __restrict__ bgemm, float*
+__restrict__ Winograd_Conv2d_out)
 {
   float _inverse_temp_buffer [ 4 ];
   float _data_pack_write_cache [ 16 ];
@@ -2854,15 +2930,24 @@ void __launch_bounds__(128) schedule_wino_conv2d_3(const float* __restrict__ X, 
           inverse__reduce_init[((2 * k) + a)] = 0;
           for (int32_t r_g_a = 0; r_g_a < 4; r_g_a += 1) {
             for (int32_t r_g_b = 0; r_g_b < 4; r_g_b += 1) {
-              inverse[((2 * k) + a)] = (inverse[((2 * k) + a)] + (bgemm[((128 * (int)blockIdx.x) + ((32768 * r_g_a) + ((8192 * r_g_b) + (int)threadIdx.x)))] * ((((((3 - r_g_a) == 0) && ((1 - k) == 0))) ? 1 : (((((3 - r_g_a) == 0) && ((-1 * k) == 0))) ? 0 : (((((2 - r_g_a) == 0) && ((1 - k) == 0))) ? 1 : (((((2 - r_g_a) == 0) && ((-1 * k) == 0))) ? 1 : (((((1 - r_g_a) == 0) && ((1 - k) == 0))) ? -1 : (((((1 - r_g_a) == 0) && ((-1 * k) == 0))) ? 1 : (((((-1 * r_g_a) == 0) && ((1 - k) == 0))) ? 0 : (((((-1 * r_g_a) == 0) && ((-1 * k) == 0))) ? 1 : 1)))))))) * (((((3 - r_g_b) == 0) && ((1 - a) == 0))) ? 1 : (((((3 - r_g_b) == 0) && ((-1 * a) == 0))) ? 0 : (((((2 - r_g_b) == 0) && ((1 - a) == 0))) ? 1 : (((((2 - r_g_b) == 0) && ((-1 * a) == 0))) ? 1 : (((((1 - r_g_b) == 0) && ((1 - a) == 0))) ? -1 : (((((1 - r_g_b) == 0) && ((-1 * a) == 0))) ? 1 : (((((-1 * r_g_b) == 0) && ((1 - a) == 0))) ? 0 : (((((-1 * r_g_b) == 0) && ((-1 * a) == 0))) ? 1 : 1)))))))))));
+              inverse[((2 * k) + a)] = (inverse[((2 * k) + a)] + (bgemm[((128 * (int)blockIdx.x) + ((32768 * r_g_a) +
+((8192 * r_g_b) + (int)threadIdx.x)))] * ((((((3 - r_g_a) == 0) && ((1 - k) == 0))) ? 1 : (((((3 - r_g_a) == 0) && ((-1
+* k) == 0))) ? 0 : (((((2 - r_g_a) == 0) && ((1 - k) == 0))) ? 1 : (((((2 - r_g_a) == 0) && ((-1 * k) == 0))) ? 1 :
+(((((1 - r_g_a) == 0) && ((1 - k) == 0))) ? -1 : (((((1 - r_g_a) == 0) && ((-1 * k) == 0))) ? 1 : (((((-1 * r_g_a) == 0)
+&& ((1 - k) == 0))) ? 0 : (((((-1 * r_g_a) == 0) && ((-1 * k) == 0))) ? 1 : 1)))))))) * (((((3 - r_g_b) == 0) && ((1 -
+a) == 0))) ? 1 : (((((3 - r_g_b) == 0) && ((-1 * a) == 0))) ? 0 : (((((2 - r_g_b) == 0) && ((1 - a) == 0))) ? 1 : (((((2
+- r_g_b) == 0) && ((-1 * a) == 0))) ? 1 : (((((1 - r_g_b) == 0) && ((1 - a) == 0))) ? -1 : (((((1 - r_g_b) == 0) && ((-1
+* a) == 0))) ? 1 : (((((-1 * r_g_b) == 0) && ((1 - a) == 0))) ? 0 : (((((-1 * r_g_b) == 0) && ((-1 * a) == 0))) ? 1 :
+1)))))))))));
             };
           };
         };
       };
-      for (int32_t k = 0; k < cinn_nvgpu_min_fp32(2, (7 + ((-2 * ((int)threadIdx.x / 4)) + (8 * ((int)threadIdx.x / 16))))); k += 1) {
-        for (int32_t a = 0; a < cinn_nvgpu_min_fp32(2, (31 + ((-2 * ((int)threadIdx.x & 15)) + (-4 * k)))); a += 1) {
-          if ((((1 + (int)threadIdx.x) & 3) >= a)) {
-            Winograd_Conv2d_out[((-7 * ((int)threadIdx.x / 16)) + ((14 * ((int)threadIdx.x / 4)) + ((2 * ((int)threadIdx.x & 3)) + ((392 * (int)blockIdx.x) + ((7 * k) + a)))))] = inverse[((2 * k) + a)];
+      for (int32_t k = 0; k < cinn_nvgpu_min_fp32(2, (7 + ((-2 * ((int)threadIdx.x / 4)) + (8 * ((int)threadIdx.x /
+16))))); k += 1) { for (int32_t a = 0; a < cinn_nvgpu_min_fp32(2, (31 + ((-2 * ((int)threadIdx.x & 15)) + (-4 * k)))); a
++= 1) { if ((((1 + (int)threadIdx.x) & 3) >= a)) { Winograd_Conv2d_out[((-7 * ((int)threadIdx.x / 16)) + ((14 *
+((int)threadIdx.x / 4)) + ((2 * ((int)threadIdx.x & 3)) + ((392 * (int)blockIdx.x) + ((7 * k) + a)))))] = inverse[((2 *
+k) + a)];
           };
         };
       };
@@ -3102,7 +3187,8 @@ typedef long int int64_t;
 
 
 __global__
-void __launch_bounds__(128) add_vectorize(const float* __restrict__ A, const float* __restrict__ B, float* __restrict__ C)
+void __launch_bounds__(128) add_vectorize(const float* __restrict__ A, const float* __restrict__ B, float* __restrict__
+C)
 {
   if (((int)threadIdx.x < 128)) {
     for (int32_t j = 0; j < 125; j += 1) {
@@ -3123,6 +3209,6 @@ void __launch_bounds__(128) add_vectorize(const float* __restrict__ A, const flo
   ASSERT_EQ(utils::Trim(target_source), source_code);
   TestElementwiseAddPrecisionBasic(builder.Build(), "add_vectorize", M, N);
 }
-
+*/
 }  // namespace backends
 }  // namespace cinn
