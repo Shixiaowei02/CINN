@@ -70,14 +70,16 @@ class GraphAlterHelper {
       return false;
     });
 
+    LOG(INFO) << "gnodes size = " << nodes.size();
     for (auto gnode : nodes) {
       auto src = gnode->safe_as<Node>();
       CHECK(src);
-      auto dst = GetCustomCallNode(src);
-      CHECK(dst->attrs.attr_store.count("conv_type"));
-      std::string type = dst->attrs.attr_store.count("conv_type")
-                             ? absl::get<std::string>(dst->attrs.attr_store["conv_type"])
-                             : "forward";
+      auto dst         = GetCustomCallNode(src);
+      std::string type = "forward";
+      // CHECK(dst->attrs.attr_store.count("conv_type"));
+      // std::string type = dst->attrs.attr_store.count("conv_type")
+      //                        ? absl::get<std::string>(dst->attrs.attr_store["conv_type"])
+      //                        : "forward";
       if (type == "forward") {
         dst->attrs.attr_store["custom_call"] = std::string("cinn_call_cudnn_conv2d_forward");
       } else if (type == "backward_data") {
