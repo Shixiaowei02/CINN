@@ -50,12 +50,11 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   options.program_passes.emplace_back("DeadCodeEliminate");
   if (FLAGS_cinn_open_fusion_optimize) {
     if (FLAGS_cinn_use_new_fusion_pass) {
-      options.graph_passes = {"OpFusionPass", "FusionMergePass"};
+      options.graph_passes = {"ConvToCustomCallPass", "OpFusionPass", "FusionMergePass"};
     } else {
-      options.graph_passes = {"OpFusion"};
+      options.graph_passes = {"ConvToCustomCallPass", "OpFusion"};
     }
   }
-
   return options;
 }
 
@@ -63,9 +62,9 @@ std::vector<std::string> DefaultOpFusionPasses() {
   std::vector<std::string> passes;
   if (FLAGS_cinn_open_fusion_optimize) {
     if (FLAGS_cinn_use_new_fusion_pass) {
-      passes = {"OpFusionPass", "FusionMergePass"};
+      passes = {"OpFusionPass", "FusionMergePass", "ConvToCustomCallPass"};
     } else {
-      passes = {"OpFusion"};
+      passes = {"OpFusion", "ConvToCustomCallPass"};
     }
   }
   return passes;
