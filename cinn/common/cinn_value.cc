@@ -119,6 +119,7 @@ CINNValue::operator CINNValuePack() const {
   return absl::any_cast<CINNValuePack>(shared_);
 }
 CINNValue::operator poly::StageMap() const {
+  LOG(INFO) << "stage map error";
   CHECK_EQ(type_code(), TypeCode<poly::StageMap>());
   return absl::any_cast<poly::StageMap>(shared_);
 }
