@@ -367,7 +367,7 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
   cudnnFilterDescriptor_t w_desc;
   CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
   CUDNN_CALL(cudnnSetFilter4dDescriptor(
-      w_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NHWC, weights_n, weights_c, weights_h, weights_w));
+      w_desc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, weights_n, weights_c, weights_h, weights_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
   CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
@@ -403,7 +403,7 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
   */
 
   // if (GetCinnCudnnDeterministic()) {
-  algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
+  algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
   //}
 
   size_t ws_size = 0;
