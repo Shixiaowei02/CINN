@@ -309,52 +309,25 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.front(), target);
           *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
           return;
-        } else {
-          LOG(INFO) << "conv_type is " << conv_type;
-          /*
-          for (auto& stage_pair: stages) {
-            auto& stage = stage_pair.second;
-            LOG(INFO) << "stage->n_out_dims() = " << stage->n_out_dims();
-            if (stage->n_out_dims() > 0) {
-              stage->Bind(0, "threadIdx.x");
-            }
-          }
-          LOG(INFO) << "start here!";
-          arg_pack.back() = CINNValue(stages);
-          LOG(INFO) << "end here!";
-          *ret = arg_pack;
-          return;
-          */
-          LOG(INFO) << "arg_pack.size() == 4UL";
-          Expr Out             = arg_pack[0];
-          Expr input_pad       = arg_pack[1];
-          Expr weights         = arg_pack[2];
-          ir::Tensor out_t     = Out.as_tensor_ref();
-          ir::Tensor input_t   = input_pad.as_tensor_ref();
-          ir::Tensor weights_t = weights.as_tensor_ref();
-          CHECK(Out.as_tensor());
-          pe::CudaScheduleConv(stages, input_t, weights_t, out_t, target);
-          arg_pack[0] = Expr(out_t);
-          arg_pack[1] = Expr(input_t);
-          arg_pack[2] = Expr(weights_t);
-          *ret        = CINNValuePack{{arg_pack[0], arg_pack[1], arg_pack[2], CINNValue(stages)}};
-          return;
         }
 #endif
         if (arg_pack.size() == 4UL) {
-          LOG(INFO) << "arg_pack.size() == 4UL";
-          Expr Out             = arg_pack[0];
-          Expr input_pad       = arg_pack[1];
-          Expr weights         = arg_pack[2];
-          ir::Tensor out_t     = Out.as_tensor_ref();
-          ir::Tensor input_t   = input_pad.as_tensor_ref();
-          ir::Tensor weights_t = weights.as_tensor_ref();
-          CHECK(Out.as_tensor());
-          pe::CudaScheduleConv(stages, input_t, weights_t, out_t, target);
-          arg_pack[0] = Expr(out_t);
-          arg_pack[1] = Expr(input_t);
-          arg_pack[2] = Expr(weights_t);
-          *ret        = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
+          Expr input_pad = arg_pack[1];
+          CHECK(input_pad.as_tensor());
+          stages[input_pad.as_tensor_ref()]->ComputeInline();
+          Expr weights_dilation = arg_pack[2];
+          CHECK(weights_dilation.as_tensor());
+          stages[weights_dilation.as_tensor_ref()]->ComputeInline();
+          Expr out = arg_pack[0];
+          LOG(INFO) << "stages[out.as_tensor()] n_out_dims = " << stages[out.as_tensor()]->n_out_dims();
+          stages[out.as_tensor()]->Bind(0, "blockIdx.z");
+          stages[out.as_tensor()]->Bind(1, "blockIdx.y");
+          stages[out.as_tensor()]->Bind(2, "blockIdx.x");
+          stages[out.as_tensor()]->Bind(3, "threadIdx.z");
+          stages[out.as_tensor()]->Bind(4, "threadIdx.y");
+          stages[out.as_tensor()]->Bind(5, "threadIdx.x");
+          stages[out.as_tensor()]->Unroll(6);
+          *ret = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
           return;
         } else if (arg_pack.size() == 13UL) {
           LOG(INFO) << "arg_pack.size() == 13UL";
