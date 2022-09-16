@@ -219,6 +219,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
         }
       }
     } else if (data_format == "NHWC") {
+      LOG(INFO) << "pe::Conv2d_NHWC";
       // A is input: [N, H, W, C], B is filter: [C_out, C_in/group, filter_h, filter_w]
       out = pe::Conv2d_NHWC(A.as_tensor_ref(),
                             B.as_tensor_ref(),
@@ -297,8 +298,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
       CHECK(arg_pack.size() == 4UL || arg_pack.size() == 3UL || arg_pack.size() == 6UL || arg_pack.size() == 13UL);
       poly::StageMap stages = arg_pack.back();
       if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDNN
-        LOG(INFO) << "--- CINN_WITH_CUDNN";
+#if 1
+        // #ifdef CINN_WITH_CUDNN
+        LOG(INFO) << "--- CINN_WITH_CUDNN, arg_pack.size() = " << arg_pack.size();
         // If conv_type is backward_filter or backward_data, we built a fake op.
         // As runtime use cudnn to compute conv2d, this fake op is not to be called.
         // When cinn support backward_filter/backward_data code gen, this code is to be removed.
@@ -308,7 +310,35 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
           return;
         } else {
-          LOG(FATAL) << "conv_type is " << conv_type;
+          LOG(INFO) << "conv_type is " << conv_type;
+          /*
+          for (auto& stage_pair: stages) {
+            auto& stage = stage_pair.second;
+            LOG(INFO) << "stage->n_out_dims() = " << stage->n_out_dims();
+            if (stage->n_out_dims() > 0) {
+              stage->Bind(0, "threadIdx.x");
+            }
+          }
+          LOG(INFO) << "start here!";
+          arg_pack.back() = CINNValue(stages);
+          LOG(INFO) << "end here!";
+          *ret = arg_pack;
+          return;
+          */
+          LOG(INFO) << "arg_pack.size() == 4UL";
+          Expr Out             = arg_pack[0];
+          Expr input_pad       = arg_pack[1];
+          Expr weights         = arg_pack[2];
+          ir::Tensor out_t     = Out.as_tensor_ref();
+          ir::Tensor input_t   = input_pad.as_tensor_ref();
+          ir::Tensor weights_t = weights.as_tensor_ref();
+          CHECK(Out.as_tensor());
+          pe::CudaScheduleConv(stages, input_t, weights_t, out_t, target);
+          arg_pack[0] = Expr(out_t);
+          arg_pack[1] = Expr(input_t);
+          arg_pack[2] = Expr(weights_t);
+          *ret        = CINNValuePack{{arg_pack[0], arg_pack[1], arg_pack[2], CINNValue(stages)}};
+          return;
         }
 #endif
         if (arg_pack.size() == 4UL) {
@@ -444,7 +474,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           return;
         }
       }
+      LOG(INFO) << "*ret = arg_pack begin";
       *ret = arg_pack;
+      LOG(INFO) << "*ret = arg_pack end";
     }
   });
 

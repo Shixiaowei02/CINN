@@ -32,7 +32,8 @@ const int kArgsArrayMaxLen = 20;
 llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(const ir::_LoweredFunc_* func) {
   auto body     = func->body;
   auto* call_ir = body.As<ir::Call>();
-  CHECK(call_ir);
+  LOG(INFO) << "node type = " << body.node_type() << "; debug information: " << body;
+  CHECK(call_ir) << "body is not ir::call";
 
   // Create the function
   // @{

@@ -58,12 +58,14 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
  private:
   void Visit(const ir::_LoweredFunc_* op, Expr* expr) override {
     if (op->cuda_axis_info.valid()) {
+      LOG(INFO) << op->name << " cuda_axis_info.valid() == true";
       CHECK(op->cuda_axis_info.valid());
 
       auto host_func = CreateHostFunctionGivenDeviceKernel(op);
       host_module_builder.AddFunction(host_func.as_lowered_func_ref());
       device_module_builder.AddFunction(CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     } else {
+      LOG(INFO) << op->name << " cuda_axis_info.valid() == false";
       host_module_builder.AddFunction(expr->as_lowered_func_ref());
     }
   }
@@ -116,8 +118,10 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                                            ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
                                            ir::Argument(kernel_stream, ir::Argument::IO::kOutput)};
 
-    LOG(INFO) << "_LoweredFunc_::Make";
-    return ir::_LoweredFunc_::Make(func->name, arguments, call_extern_api, {});
+    LOG(INFO) << "_LoweredFunc_::Make start";
+    auto ret = ir::_LoweredFunc_::Make(func->name, arguments, call_extern_api, {});
+    LOG(INFO) << "_LoweredFunc_::Make end";
+    return ret;
   }
 
   Expr CreateDeviceFunctionGivenDeviceKernel(Expr expr) {

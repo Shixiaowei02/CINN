@@ -1795,9 +1795,9 @@ void CudaScheduleConv(poly::StageMap stages,
       std::to_string(output->shape[1].as_int32()) + " " + std::to_string(output->shape[2].as_int32()) + " " +
       std::to_string(output->shape[3].as_int32());
   if (res.count(key) == 0) {
-    VLOG(3) << "Didn't find saved param, key is: " << key;
+    LOG(INFO) << "Didn't find saved param, key is: " << key;
   } else {
-    VLOG(3) << "Find saved param! key is: " << key;
+    LOG(INFO) << "Find saved param! key is: " << key;
     CudaScheduleConv2(stages, input_pad, weights, output, target, key);
     return;
   }
@@ -1823,6 +1823,12 @@ void CudaScheduleConv(poly::StageMap stages,
   auto bz_tz = stages[output]->Split(1, thread_z);
   auto &bz   = std::get<0>(bz_tz);
   auto &tz   = std::get<1>(bz_tz);
+
+  LOG(INFO) << "stages[weights]->n_out_dims() =  " << stages[weights]->n_out_dims();
+  stages[weights]->Bind(0, "blockIdx.z");
+  stages[weights]->Bind(1, "blockIdx.y");
+  stages[weights]->Bind(2, "threadIdx.z");
+  stages[weights]->Bind(3, "threadIdx.x");
 
   stages[output]->Reorder({bz, by, tz, tx, fi});
   stages[output]->Bind(1, "blockIdx.z");

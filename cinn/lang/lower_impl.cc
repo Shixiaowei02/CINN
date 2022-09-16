@@ -485,10 +485,13 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(Expr func_iterator
     arg_names.insert(tensor->buffer->name);
 
     auto io = is_output ? ir::Argument::IO::kOutput : ir::Argument::IO::kInput;
-    if (io == ir::Argument::IO::kInput)
+    if (io == ir::Argument::IO::kInput) {
+      LOG(INFO) << "kInput tensor: " << tensor->name;
       in_args.emplace_back(tensor->buffer, io);
-    else
+    } else {
+      LOG(INFO) << "kOutput tensor: " << tensor->name;
       out_args.emplace_back(tensor->buffer, io);
+    }
   }
   std::vector<ir::Argument> args(in_args.begin(), in_args.end());
   args.insert(std::end(args), out_args.begin(), out_args.end());
@@ -533,6 +536,7 @@ absl::flat_hash_map<std::string, Tensor> LowerImpl::GenAllTensorMap() {
 }
 
 std::vector<ir::LoweredFunc> LowerImpl::operator()() {
+  LOG(INFO) << "LowerImpl::operator()()";
   std::vector<poly::Stage*> stages;
   std::map<std::string, ir::Tensor> all_tensor_map;
   for (auto& t : CollectAllTensors()) {
@@ -680,26 +684,33 @@ std::set<std::pair<std::string, std::string>> LowerImpl::CollectExtraDependencie
 }
 
 std::vector<Expr> LowerImpl::GenerateFunctionBody(const poly::Schedule* schedule) {
+  LOG(INFO) << "------ GenerateFunctionBody";
   // generate the expressions for each group.
   std::vector<Expr> exprs;
   std::vector<Expr> result;
   auto tensor_map = GenAllTensorMap();
   std::map<std::string, Expr> tuple_to_expr;
+  LOG(INFO) << "schedule->groups.size() = " << schedule->groups.size();
   CHECK(!schedule->groups.empty()) << "no group is generated";
 
   std::map<std::string, ir::Tensor> global_tensor_map;
   std::unordered_set<std::string> resized_buffer;
-
+  int i = 0;
   for (auto& group : schedule->groups) {
+    LOG(INFO) << "group id = " << i++ << ", nodes: " << group.nodes.size();
     CHECK_GT(group.nodes.size(), 0) << "group is empty";
     bool all_temp_tensor = true;
     for (auto& node : group.nodes) {
       if (!tensor_map.count(node->id())) {
-        VLOG(2) << "tensor_map doesn't count " << node->id();
+        LOG(INFO) << "tensor_map doesn't count " << node->id();
         continue;
       }
       auto& tensor = tensor_map[node->id()];
-      if (!tensor->has_expression()) continue;
+      if (!tensor->has_expression()) {
+        LOG(INFO) << "tensor doesn't have expression: " << node->id();
+        continue;
+      }
+      LOG(INFO) << "go on: " << node->id();
       all_temp_tensor =
           all_temp_tensor && (stages_[tensor]->inlined() ||
                               (tensor->buffer.defined() && (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
@@ -755,6 +766,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(const poly::Schedule* schedule
       if (target_ == common::DefaultNVGPUTarget() && !all_temp_tensor) {
         exprs.push_back(group_expr);
         Expr body = ir::Block::Make(exprs);
+        LOG(INFO) << "result.push_back: " << body;
         result.push_back(body);
         exprs.clear();
       } else {
@@ -767,6 +779,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(const poly::Schedule* schedule
     result.push_back(body);
     exprs.clear();
   } else if (!exprs.empty()) {
+    LOG(INFO) << "--- exprs.size() = " << exprs.size();
     Expr body = ir::Block::Make(exprs);
     result.push_back(body);
     exprs.clear();
@@ -789,6 +802,7 @@ LowerImpl::LowerImpl(const std::string& fn_name,
       temp_tensor_args_(temp_tensor_args),
       target_(target),
       support_ir_schedule_(support_ir_schedule) {
+  LOG(INFO) << "LowerImpl from GetOpFunc here!";
   /*
   {  // Initialize the graph
     std::vector<ir::Tensor> tensors(tensor_args.begin(), tensor_args.end());

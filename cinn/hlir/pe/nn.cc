@@ -523,6 +523,7 @@ std::vector<ir::Tensor> Conv2d_NHWC(const ir::Tensor &input,
                                     int dilation_h,
                                     int dilation_w,
                                     const std::string &output_name) {
+  LOG(INFO) << "===== Conv2d_NHWC";
   CHECK_EQ(input->shape.size(), 4U) << "Input's dimension of Conv2d_NHWC op is not 4! Please check.";
   CHECK_EQ(weights->shape.size(), 4U) << "Weight's dimension of Conv2d_NHWC op is not 4! Please check.";
   std::vector<Expr> output_shape;

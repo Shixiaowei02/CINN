@@ -149,6 +149,7 @@ ir::LoweredFunc Lower(const std::string& name,
                                                support_ir_schedule);
   auto result              = lower_impl_instance();
   std::vector<ir::LoweredFunc> return_value;
+  LOG(INFO) << "result size of lower_impl_instance = " << result.size();
   for (auto& res : result) {
     auto temp_buffers = GetTempBuffers(tensor_args, stages, res->body);
     if (b) {

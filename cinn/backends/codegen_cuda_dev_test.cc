@@ -22,6 +22,7 @@
 
 #include "cinn/backends/codegen_cuda_host.h"
 #include "cinn/backends/codegen_cuda_util.h"
+#include "cinn/backends/compiler.h"
 #include "cinn/backends/cuda_util.h"
 #include "cinn/backends/extern_func_jit_register.h"
 #include "cinn/backends/llvm/execution_engine.h"
@@ -191,8 +192,6 @@ TEST(CodeGenCUDA2, test_of_splitcudakernel) {
   stages[D]->Bind(0, "blockIdx.x");
   stages[D]->Bind(1, "threadIdx.x");
 
-  CodeGenCUDA_Dev codegen(target);
-
   auto func = lang::LowerVec("elementwise_mul_and_add", stages, {A, B, C, D}, {}, {}, nullptr, target);
 
   Module::Builder builder("module", target);
@@ -202,48 +201,29 @@ TEST(CodeGenCUDA2, test_of_splitcudakernel) {
 
   auto module = builder.Build();
 
-  auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
-  auto& host_module                = std::get<0>(_host_module_device_module_);
-  auto& device_module              = std::get<1>(_host_module_device_module_);
+  auto compiler = backends::Compiler::Create(target);
+  compiler->Build(module);
 
-  auto source_code = codegen.Compile(module);
+  /*
+    CodeGenCUDA_Dev codegen(target);
 
-  LOG(INFO) << "compiled test_of_splitcudakernel code:\n\n\n" << source_code;
+    auto func = lang::LowerVec("elementwise_mul_and_add", stages, {A, B, C, D}, {}, {}, nullptr, target);
 
-  std::string source_target = R"ROC(
-extern "C" {
+    Module::Builder builder("module", target);
+    for (auto& i : func) {
+      builder.AddFunction(i);
+    }
 
-#include "cinn_cuda_runtime_source.cuh"
+    auto module = builder.Build();
 
-#ifdef __CUDACC_RTC__
-typedef int int32_t;
-typedef char int8_t;
-typedef long int int64_t;
-#endif
+    auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
+    auto& host_module                = std::get<0>(_host_module_device_module_);
+    auto& device_module              = std::get<1>(_host_module_device_module_);
 
+    auto source_code = codegen.Compile(module);
 
-
-__global__
-void __launch_bounds__(200) elementwise_mul_and_add(const float* __restrict__ X, const float* __restrict__ Y, float* __restrict__ C)
-{
-  if (((int)blockIdx.x < 100)) {
-    if (((int)threadIdx.x < 200)) {
-      C[((200 * (int)blockIdx.x) + (int)threadIdx.x)] = (X[((200 * (int)blockIdx.x) + (int)threadIdx.x)] * Y[((200 * (int)blockIdx.x) + (int)threadIdx.x)]);
-    };
-  };
-}__global__
-void __launch_bounds__(200) elementwise_mul_and_add_1(const float* __restrict__ X, const float* __restrict__ Y, const float* __restrict__ C, float* __restrict__ D)
-{
-  if (((int)blockIdx.x < 100)) {
-    if (((int)threadIdx.x < 200)) {
-      D[((200 * (int)blockIdx.x) + (int)threadIdx.x)] = (C[((200 * (int)blockIdx.x) + (int)threadIdx.x)] + Y[((200 * (int)blockIdx.x) + (int)threadIdx.x)]);
-    };
-  };
-}
-
-}
-)ROC";
-  ASSERT_EQ(utils::Trim(source_target), source_code);
+    LOG(INFO) << "compiled test_of_splitcudakernel code:\n\n\n" << source_code;
+  */
 }
 /*
 TEST(CodeGenCUDA2, test_of_splitouter) {

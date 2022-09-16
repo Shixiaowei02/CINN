@@ -373,9 +373,11 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
 
   auto impl = OpStrategy::SelectImpl(strategy[node->op()](node->attrs, inputs, out_types, output_shapes, target_));
 
+  LOG(INFO) << "impl->fcompute(common::CINNValuePack{cinn_inputs}) begin";
   common::CINNValuePack C = impl->fcompute(common::CINNValuePack{cinn_inputs});
-  const ir::Expr& expr    = C[0];
-  poly::StageMap stages   = C.back();
+  LOG(INFO) << "impl->fcompute(common::CINNValuePack{cinn_inputs}) end";
+  const ir::Expr& expr  = C[0];
+  poly::StageMap stages = C.back();
   // make sure all the tensors in the stages before schedule launch.
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
@@ -383,8 +385,9 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     LOG(INFO) << "debug compute schedule body: " << temp.as_tensor()->body();
     stages->InsertLazily(temp.as_tensor_ref());
   }
-
+  LOG(INFO) << "impl->fschedule(C) begin";
   C = impl->fschedule(C);
+  LOG(INFO) << "impl->fschedule(C) end";
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
     LOG(INFO) << "schedule temp = " << temp << ", " << temp.as_tensor_ref()->name;
@@ -396,7 +399,7 @@ std::vector<ir::LoweredFunc> GraphCompiler::GetOpFunc(const Node* node) {
     }
   }
   for (auto& input : inputs) {
-    LOG(INFO) << "input.name = " << input->name;
+    LOG(INFO) << "GetOpFunc input.name = " << input->name;
   }
 
   auto func = lang::LowerVec(GetOrGenFullFuncName(GenOpFuncName(node)), stages, inputs, {}, {}, nullptr, this->target_);
