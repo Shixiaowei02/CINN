@@ -78,6 +78,8 @@ void IRPoolScheduleGPU(ir::IRSchedule &ir_sch, const common::Target &target);
 
 void IRGlobalPoolScheduleGPU(ir::IRSchedule &ir_sch, const common::Target &target);
 
+void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target);
+
 void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,
                          ir::Tensor &input_pad,
                          ir::Tensor &weights,

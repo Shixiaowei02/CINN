@@ -307,6 +307,12 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
           return;
+        } else if (expr_size == 3) {
+          pe::IRCudaScheduleConv3(ir_sch, target);
+          LOG(INFO) << "After IRCudaScheduleConv, arg_pack[0] is : " << ir_sch.GetModule().GetExprs().at(0);
+          std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+          *ret = CINNValuePack{res};
+          return;
         } else {
           CINN_NOT_IMPLEMENTED
         }

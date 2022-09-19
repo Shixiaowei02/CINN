@@ -749,6 +749,37 @@ void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,
   VLOG(3) << "After IRCudaScheduleConv2, expr is: " << ir_sch.GetModule().GetExprs().at(0);
 }
 
+void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target, const std::string &key) {
+  auto &res = ScheduleParam::get_cuda_instance().GetParam();
+
+  const auto &all_blocks = ir_sch.GetAllBlocks();
+  Expr weights_block     = all_blocks[0];
+  Expr input_pad_block   = all_blocks[1];
+  Expr output_block      = all_blocks[3];
+
+  auto weights   = GetTensor(weights_block);
+  auto input_pad = GetTensor(input_pad_block);
+  auto output    = GetTensor(output_block);
+
+  int n = output->shape[0].as_int32();
+  int c = output->shape[1].as_int32();
+  optim::Simplify(&(output->shape[2]));
+  int h = output->shape[2].as_int32();
+  optim::Simplify(&(output->shape[3]));
+  int w  = output->shape[3].as_int32();
+  int rc = input_pad->shape[1].as_int32();
+
+  ir_sch.ComputeInline(weights_block);
+  ir_sch.ComputeInline(input_pad_block);
+
+  auto loops = ir_sch.GetLoops(output_block);
+  CHECK_GE(loops.size(), 5U);
+  ir_sch.Bind(loops[1], "blockIdx.z");
+  ir_sch.Bind(loops[2], "blockIdx.y");
+  ir_sch.Bind(loops[3], "threadIdx.z");
+  ir_sch.Bind(loops[4], "threadIdx.x");
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
