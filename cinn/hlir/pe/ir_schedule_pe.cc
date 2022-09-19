@@ -749,7 +749,7 @@ void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,
   VLOG(3) << "After IRCudaScheduleConv2, expr is: " << ir_sch.GetModule().GetExprs().at(0);
 }
 
-void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target, const std::string &key) {
+void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target) {
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
 
   const auto &all_blocks = ir_sch.GetAllBlocks();
