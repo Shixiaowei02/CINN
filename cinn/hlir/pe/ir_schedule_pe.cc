@@ -749,18 +749,24 @@ void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,
   VLOG(3) << "After IRCudaScheduleConv2, expr is: " << ir_sch.GetModule().GetExprs().at(0);
 }
 
+void PrintExprs(const std::vector<Expr> &exprs) {
+  for (int i = 0; i < exprs.size(); ++i) {
+    LOG(INFO) << "PrintExprs " << i << ": " << exprs[i];
+  }
+}
+
 void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target) {
+  LOG(INFO) << "---- IRCudaScheduleConv3";
   auto &res = ScheduleParam::get_cuda_instance().GetParam();
 
-  const auto &all_blocks = ir_sch.GetAllBlocks();
-  Expr weights_block     = all_blocks[0];
-  Expr input_pad_block   = all_blocks[1];
-  Expr output_block      = all_blocks[3];
-
-  auto weights   = GetTensor(weights_block);
-  auto input_pad = GetTensor(input_pad_block);
-  auto output    = GetTensor(output_block);
-
+  auto all_blocks = ir_sch.GetAllBlocks();
+  CHECK_EQ(all_blocks.size(), 4U);
+  auto input_pad = GetTensor(all_blocks[1]);
+  auto output    = GetTensor(all_blocks[3]);
+  all_blocks     = ir_sch.GetAllBlocks();
+  CHECK_EQ(all_blocks.size(), 4U);
+  auto weights = GetReadTensor(all_blocks[3], 2);
+  LOG(INFO) << "here";
   int n = output->shape[0].as_int32();
   int c = output->shape[1].as_int32();
   optim::Simplify(&(output->shape[2]));
@@ -768,16 +774,74 @@ void IRCudaScheduleConv3(ir::IRSchedule &ir_sch, const common::Target &target) {
   optim::Simplify(&(output->shape[3]));
   int w  = output->shape[3].as_int32();
   int rc = input_pad->shape[1].as_int32();
-
-  ir_sch.ComputeInline(weights_block);
-  ir_sch.ComputeInline(input_pad_block);
-
-  auto loops = ir_sch.GetLoops(output_block);
+  LOG(INFO) << "here";
+  std::string key =
+      "CudaDirectConvSchedule " + std::to_string(input_pad->shape[0].as_int32()) + " " +
+      std::to_string(input_pad->shape[1].as_int32()) + " " + std::to_string(input_pad->shape[2].as_int32()) + " " +
+      std::to_string(input_pad->shape[3].as_int32()) + " " + std::to_string(weights->shape[0].as_int32()) + " " +
+      std::to_string(weights->shape[1].as_int32()) + " " + std::to_string(weights->shape[2].as_int32()) + " " +
+      std::to_string(weights->shape[3].as_int32()) + " " + std::to_string(output->shape[0].as_int32()) + " " +
+      std::to_string(output->shape[1].as_int32()) + " " + std::to_string(output->shape[2].as_int32()) + " " +
+      std::to_string(output->shape[3].as_int32());
+  if (res.count(key) == 0) {
+    VLOG(3) << "Didn't find saved param, key is: " << key;
+  } else {
+    VLOG(3) << "Find saved param! key is: " << key;
+    // Todo:@Haoze temporarily turn off loading params
+    // IRCudaScheduleConv2(ir_sch, input_pad, weights, output, target, key);
+    // return;
+  }
+  LOG(INFO) << "here!!!";
+  PrintExprs(all_blocks);
+  LOG(INFO) << "here";
+  ir_sch.ComputeInline(all_blocks[0]);
+  ir_sch.ComputeInline(all_blocks[1]);
+  LOG(INFO) << "here";
+  // ir_sch.ComputeInline(all_blocks[2]); // cache_init
+  int f_inner  = GetInnerSplitter(c, h);
+  int block_z  = SplitEven(c / f_inner);
+  int thread_z = c / f_inner / block_z;
+  LOG(INFO) << "here";
+  int rc_factor = SplitEven(rc);
+  while (w * thread_z > 1024 && thread_z % 2 == 0) {
+    thread_z = thread_z / 2;
+    f_inner  = f_inner * 2;
+  }
+  CHECK_LE(w * thread_z, 1024) << "Wrong Param of Conv2d!";
+  all_blocks = ir_sch.GetAllBlocks();
+  PrintExprs(all_blocks);
+  // auto OL    = ir_sch.CacheWrite(all_blocks[1], 0, "local");
+  all_blocks = ir_sch.GetAllBlocks();
+  LOG(INFO) << "here";
+  PrintExprs(all_blocks);
+  auto loops = ir_sch.GetLoops(all_blocks[0]);
+  LOG(INFO) << "here";
+  CHECK_GE(loops.size(), 2U);
+  ir_sch.Split(loops[1], {-1, thread_z, f_inner});
+  all_blocks = ir_sch.GetAllBlocks();
+  /*
+  loops      = ir_sch.GetLoops(all_blocks[0]);
+  CHECK_GE(loops.size(), 6U);
+  ir_sch.Reorder({loops[1], loops[4], loops[2], loops[5], loops[3]});
+  all_blocks = ir_sch.GetAllBlocks();
+  */
+  loops = ir_sch.GetLoops(all_blocks[0]);
   CHECK_GE(loops.size(), 5U);
   ir_sch.Bind(loops[1], "blockIdx.z");
   ir_sch.Bind(loops[2], "blockIdx.y");
   ir_sch.Bind(loops[3], "threadIdx.z");
   ir_sch.Bind(loops[4], "threadIdx.x");
+  all_blocks = ir_sch.GetAllBlocks();
+  loops      = ir_sch.GetLoops(all_blocks[0]);
+  CHECK_GE(loops.size(), 5U);
+  /*
+  ir_sch.ComputeAt(all_blocks[1], loops[4]);
+  all_blocks = ir_sch.GetAllBlocks();
+  loops      = ir_sch.GetLoops(all_blocks[1]);
+  CHECK_GE(loops.size(), 7U);
+  ir_sch.Split(loops[6], {-1, rc_factor});
+  */
+  LOG(INFO) << "After IRCudaScheduleConv, expr is : " << ir_sch.GetModule().GetExprs().at(0);
 }
 
 }  // namespace pe

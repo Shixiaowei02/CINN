@@ -281,6 +281,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
         if (arg_pack[i].is_expr()) {
           Expr temp = arg_pack[i];
           vec_ast.emplace_back(temp);
+          LOG(INFO) << "ast expr " << i << temp;
         }
       }
       CHECK(!vec_ast.empty());
@@ -309,6 +310,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           return;
         } else if (expr_size == 3) {
           pe::IRCudaScheduleConv3(ir_sch, target);
+          LOG(INFO) << "expr size = " << ir_sch.GetModule().GetExprs().size();
           LOG(INFO) << "After IRCudaScheduleConv, arg_pack[0] is : " << ir_sch.GetModule().GetExprs().at(0);
           std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
@@ -347,9 +349,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(const framework::NodeAttr &attrs,
           CHECK(Out.as_tensor());
           pe::CudaScheduleConv(stages, input_t, weights_t, out_t, target);
           arg_pack[0] = Expr(out_t);
-          arg_pack[1] = Expr(input_t);
-          arg_pack[2] = Expr(weights_t);
-          *ret        = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
+          LOG(INFO) << "---- After IRCudaScheduleConv, stage =  " << stages[out_t];
+          *ret = CINNValuePack{{arg_pack[0], CINNValue(stages)}};
           return;
         } else if (arg_pack.size() == 13UL) {
           Expr wino_weights_dilation          = arg_pack[0];

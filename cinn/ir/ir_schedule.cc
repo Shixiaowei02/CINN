@@ -1054,7 +1054,7 @@ void ScheduleImpl::MergeExprs() {
   std::vector<Expr> merged_block;
   merged_block.push_back(
       exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>()->schedule_block.As<ir::ScheduleBlock>()->body);
-  VLOG(3) << "Before merging, exprs[0] is : " << exprs[0];
+  LOG(INFO) << "Before merging, exprs[0] is : " << exprs[0];
   for (int i = 1; i < exprs.size(); ++i) {
     auto root_block = ir::CollectIRNodesWithoutTensor(
         exprs[i],
@@ -1069,12 +1069,12 @@ void ScheduleImpl::MergeExprs() {
     }
   }
   for (auto& block : merged_block) {
-    VLOG(3) << "in merged_block, it has " << block;
+    LOG(INFO) << "in merged_block, it has " << block;
   }
   auto merged_expr = ir::Block::Make(merged_block);
   exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>()->schedule_block.As<ir::ScheduleBlock>()->body =
       merged_expr;
-  VLOG(3) << "After merging, exprs[0] is : " << exprs[0];
+  LOG(INFO) << "After merging, exprs[0] is : " << exprs[0];
   exprs.erase(exprs.begin() + 1, exprs.end());
   this->SetExprs(exprs);
 }
@@ -1458,6 +1458,7 @@ void IRSchedule::MergeExprs() {
 }
 
 std::vector<Expr> IRSchedule::GetLoops(const Expr& block) const {
+  LOG(INFO) << "GetLoops block: " << block;
   auto results = impl_->GetLoops(block);
   trace_.Append(ScheduleDesc::Step("GetLoops", {{"block", std::vector<Expr>({block})}}, {}, results));
   return results;

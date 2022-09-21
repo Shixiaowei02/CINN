@@ -547,7 +547,9 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
 
   std::vector<ir::LoweredFunc> result;
   int num_func = 0;
+  int cnt      = 0;
   for (auto& func_iterator : func_body) {
+    LOG(INFO) << "func_iterator " << cnt++ << " : " << func_iterator;
     if (support_ir_schedule_) {
       // add ScheduleBlockRealize
       func_iterator = ir::ScheduleBlockRealize::Make(
