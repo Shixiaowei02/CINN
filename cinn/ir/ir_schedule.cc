@@ -100,6 +100,7 @@ class ScheduleImpl {
 };
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop, const std::vector<int>& factors) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(loop.As<ir::For>()) << "Expr param of Split must be For node! Please check.";
   auto* for_node = loop.As<ir::For>();
   CHECK(common::is_zero(for_node->min)) << "The For node must start with 0! Please check.";
@@ -134,6 +135,7 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop, const std::vector<int>& 
 }
 
 std::vector<Expr> ScheduleImpl::Split(const std::string& block_name, int loop_index, const std::vector<int>& factors) {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   Expr loop_expr;
   CHECK_LT(loop_index, (int)all_loops.size()) << "The loop index in Split should be less than total loop's number.";
@@ -144,6 +146,7 @@ std::vector<Expr> ScheduleImpl::Split(const std::string& block_name, int loop_in
 }
 
 Expr ScheduleImpl::Fuse(const std::vector<Expr>& loops) {
+  LOG(INFO) << "---- trace func: " << __func__;
   VLOG(3) << "Tring to fuse : ";
   for (auto& loop : loops) {
     VLOG(3) << loop;
@@ -197,6 +200,7 @@ Expr ScheduleImpl::Fuse(const std::vector<Expr>& loops) {
 }
 
 Expr ScheduleImpl::Fuse(const std::string& block_name, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
@@ -212,6 +216,7 @@ Expr ScheduleImpl::Fuse(const std::string& block_name, const std::vector<int>& l
 }
 
 Expr ScheduleImpl::Fuse(const Expr& block, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> all_loops = this->GetLoops(block);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
@@ -227,6 +232,7 @@ Expr ScheduleImpl::Fuse(const Expr& block, const std::vector<int>& loops_index) 
 }
 
 void ScheduleImpl::MutateForType(const Expr& loop, ForType for_type, int factor) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto* for_node = loop.As<ir::For>();
   CHECK(for_node) << "loop param must be For node! Please check.";
   CHECK(for_node->is_serial()) << "loop is not serial, current forloop type is "
@@ -246,16 +252,24 @@ void ScheduleImpl::MutateForType(const Expr& loop, ForType for_type, int factor)
   this->Replace(loop, loop_copy);
 }
 
-void ScheduleImpl::Parallel(const Expr& loop) { MutateForType(loop, ForType::Parallel); }
+void ScheduleImpl::Parallel(const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
+  MutateForType(loop, ForType::Parallel);
+}
 
 void ScheduleImpl::Vectorize(const Expr& loop, int factor) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
   MutateForType(loop, ForType::Vectorized, factor);
 }
 
-void ScheduleImpl::Unroll(const Expr& loop) { MutateForType(loop, ForType::Unrolled); }
+void ScheduleImpl::Unroll(const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
+  MutateForType(loop, ForType::Unrolled);
+}
 
 void ScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
+  LOG(INFO) << "---- trace func: " << __func__;
   static std::set<std::string> thread_axes = {
       "blockIdx.x", "blockIdx.y", "blockIdx.z", "threadIdx.x", "threadIdx.y", "threadIdx.z"};
   CHECK(thread_axes.count(thread_axis)) << "thread_axis " << thread_axis << " is not supported";
@@ -282,6 +296,7 @@ struct RfMutator : public ir::IRMutator<> {
   Tensor GetNewRfTensor() { return new_rf_tensor_; }
 
   void Visit(const ScheduleBlockRealize* op, Expr* expr) override {
+    LOG(INFO) << "---- trace func: " << __func__;
     // modify iter_vars and iter_values
     auto* node = expr->As<ScheduleBlockRealize>();
     CHECK(node);
@@ -317,6 +332,7 @@ struct RfMutator : public ir::IRMutator<> {
   }
 
   void Visit(const Load* op, Expr* expr) override {
+    LOG(INFO) << "---- trace func: " << __func__;
     // insert the new rfactor indice if not exist
     auto* node = expr->As<Load>();
     CHECK(node);
@@ -334,6 +350,7 @@ struct RfMutator : public ir::IRMutator<> {
   }
 
   void Visit(const Store* op, Expr* expr) override {
+    LOG(INFO) << "---- trace func: " << __func__;
     // insert the new rfactor indice if not exist
     auto* node = expr->As<Store>();
     CHECK(node);
@@ -370,6 +387,7 @@ struct RfMutator : public ir::IRMutator<> {
   }
 
   void Visit(const For* op, Expr* expr) override {
+    LOG(INFO) << "---- trace func: " << __func__;
     auto* node = expr->As<For>();
     CHECK(node);
     depth++;
@@ -424,6 +442,7 @@ struct FinalMutator : public ir::IRMutator<> {
   }
 
   void Visit(const ScheduleBlockRealize* op, Expr* expr) override {
+    LOG(INFO) << "---- trace func: " << __func__;
     auto* node = expr->As<ScheduleBlockRealize>();
     CHECK(node);
     auto* schedule_block = node->schedule_block.As<ScheduleBlock>();
@@ -716,6 +735,7 @@ DeviceAPI ScheduleImpl::GetDeviceAPI() const {
 }
 
 Expr ScheduleImpl::CacheRead(const Expr& block, int read_tensor_index, const std::string& memory_type) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(block.As<ScheduleBlockRealize>());
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
@@ -737,6 +757,7 @@ Expr ScheduleImpl::CacheRead(const Expr& block, int read_tensor_index, const std
 }
 
 Expr ScheduleImpl::CacheWrite(const Expr& block, int write_buffer_index, const std::string& memory_type) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(block.As<ScheduleBlockRealize>());
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
@@ -828,6 +849,7 @@ void ScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
  * @param tgt_stmt The For node we want.
  */
 void ScheduleImpl::Replace(const Expr& src_sref, const Expr& tgt_stmt) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK((src_sref.As<ir::For>() && tgt_stmt.As<ir::For>()) || (src_sref.As<ir::Block>() && tgt_stmt.As<ir::Block>()) ||
         (src_sref.As<ir::ScheduleBlockRealize>() && tgt_stmt.As<ir::ScheduleBlockRealize>()));
   if (src_sref == tgt_stmt) {
@@ -875,6 +897,7 @@ void ScheduleImpl::Replace(const Expr& src_sref, const Expr& tgt_stmt) {
 }
 
 void ScheduleImpl::Reorder(const std::vector<Expr>& loops) {
+  LOG(INFO) << "---- trace func: " << __func__;
   if (loops.size() <= 1) return;
   std::set<Expr, CompExpr> loop_set = CollectLoopsToSet(loops);
   auto boundary                     = GetBoundaryOfReorderRange(loop_set);
@@ -888,6 +911,7 @@ void ScheduleImpl::Reorder(const std::vector<Expr>& loops) {
 }
 
 void ScheduleImpl::Reorder(const std::string& block_name, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
@@ -912,6 +936,7 @@ void ScheduleImpl::Reorder(const Expr& block, const std::vector<int>& loops_inde
 }
 
 Expr ScheduleImpl::GetRootBlock(const Expr& expr) const {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {
     auto find_expr = ir::CollectIRNodesWithoutTensor(
@@ -1020,6 +1045,7 @@ struct FixLocalBufferSize : public ir::IRMutator<> {
 };
 
 void ScheduleImpl::SetBuffer(Expr& block, const std::string& memory_type, bool fixed) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(block.As<ir::ScheduleBlockRealize>());
   auto find_tensor = ir::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
@@ -1046,6 +1072,7 @@ void ScheduleImpl::SetBuffer(Expr& block, const std::string& memory_type, bool f
 }
 
 void ScheduleImpl::MergeExprs() {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto exprs = this->GetModule().GetExprs();
   if (exprs.size() == 1U) return;
   CHECK(exprs[0].As<ir::Block>());
@@ -1081,6 +1108,7 @@ void ScheduleImpl::MergeExprs() {
 }
 
 void ScheduleImpl::ComputeAt(const Expr& block, const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(loop.As<ir::For>());
   Expr root      = this->GetRootBlock(block);
@@ -1099,6 +1127,7 @@ void ScheduleImpl::ComputeAt(const Expr& block, const Expr& loop) {
 }
 
 void ScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
   VLOG(3) << "Begin SimpleComputeAt of block:\n" << block << " and loop:\n" << loop;
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(loop.As<ir::For>());
@@ -1245,6 +1274,7 @@ void ComputeInliner::Visit(const ir::Load* expr, Expr* op) {
 
 //! Replace the 'Load' node on the tensor to 'Load' node of its producers.
 Expr ComputeInliner::ReplaceInlinedTensor(Expr* load) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(load->As<ir::Load>());
   SetIndexSubstitution(load->As<ir::Load>()->indices);
   Expr value_copy = optim::IRCopy(inlined_store_.As<Store>()->value);
@@ -1253,6 +1283,7 @@ Expr ComputeInliner::ReplaceInlinedTensor(Expr* load) {
 }
 
 void ScheduleImpl::ComputeInline(const Expr& schedule_block) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(schedule_block.As<ir::ScheduleBlockRealize>());
   Expr root  = this->GetRootBlock(schedule_block);
   Expr store = CheckComputeInlineValidationAndGetStore(schedule_block, root);
@@ -1266,6 +1297,7 @@ void ScheduleImpl::ComputeInline(const Expr& schedule_block) {
 }
 
 std::vector<Expr> ScheduleImpl::GetLoops(const Expr& block) const {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> result;
   auto exprs = module_expr_.GetExprs();
   CHECK(block.As<ir::ScheduleBlockRealize>());
@@ -1289,12 +1321,14 @@ std::vector<Expr> ScheduleImpl::GetLoops(const Expr& block) const {
 }
 
 std::vector<Expr> ScheduleImpl::GetLoops(const std::string& block_name) const {
+  LOG(INFO) << "---- trace func: " << __func__;
   Expr block               = this->GetBlock(block_name);
   std::vector<Expr> result = this->GetLoops(block);
   return result;
 }
 
 std::vector<Expr> ScheduleImpl::GetAllBlocks() const {
+  LOG(INFO) << "---- trace func: " << __func__;
   std::vector<Expr> result;
   auto exprs = module_expr_.GetExprs();
   for (auto& it_expr : exprs) {
@@ -1310,6 +1344,7 @@ std::vector<Expr> ScheduleImpl::GetAllBlocks() const {
 }
 
 Expr ScheduleImpl::GetBlock(const std::string& block_name) const {
+  LOG(INFO) << "---- trace func: " << __func__;
   Expr result;
   auto exprs = module_expr_.GetExprs();
   for (auto& it_expr : exprs) {
@@ -1325,12 +1360,14 @@ Expr ScheduleImpl::GetBlock(const std::string& block_name) const {
 }
 
 void ScheduleImpl::CopyTransformAndLoopInfo(const std::string& block_name, const std::string& block_target_name) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto block        = this->GetBlock(block_name);
   auto block_target = this->GetBlock(block_target_name);
   this->CopyTransformAndLoopInfo(block, block_target);
 }
 
 void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block, const Expr& block_target) {
+  LOG(INFO) << "---- trace func: " << __func__;
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(block_target.As<ir::ScheduleBlockRealize>());
   auto exprs = this->GetModule().GetExprs();
@@ -1491,12 +1528,14 @@ Expr IRSchedule::GetBlock(const std::string& block_name) const {
 }
 
 std::vector<Expr> IRSchedule::Split(const Expr& loop, const std::vector<int>& factors) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto results = impl_->Split(loop, factors);
   trace_.Append(ScheduleDesc::Step("Split", {{"loop", std::vector<Expr>({loop})}}, {{"factors", factors}}, results));
   return results;
 }
 
 std::vector<Expr> IRSchedule::Split(const std::string& block_name, int loop_index, const std::vector<int>& factors) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto results = impl_->Split(block_name, loop_index, factors);
   trace_.Append(ScheduleDesc::Step(
       "SplitWithName", {}, {{"block_name", block_name}, {"loop_index", loop_index}, {"factors", factors}}, results));
@@ -1504,12 +1543,14 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name, int loop_inde
 }
 
 Expr IRSchedule::Fuse(const std::vector<Expr>& loops) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->Fuse(loops);
   trace_.Append(ScheduleDesc::Step("Fuse", {{"loops", loops}}, {}, {result}));
   return result;
 }
 
 Expr IRSchedule::Fuse(const std::string& block_name, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->Fuse(block_name, loops_index);
   trace_.Append(
       ScheduleDesc::Step("FuseWithName", {}, {{"block_name", block_name}, {"loops_index", loops_index}}, {result}));
@@ -1517,6 +1558,7 @@ Expr IRSchedule::Fuse(const std::string& block_name, const std::vector<int>& loo
 }
 
 Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->Fuse(block, loops_index);
   trace_.Append(ScheduleDesc::Step(
       "FuseWithBlock", {{"block", std::vector<Expr>({block})}}, {{"loops_index", loops_index}}, {result}));
@@ -1524,6 +1566,7 @@ Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
 }
 
 void IRSchedule::ComputeAt(const Expr& block, const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->ComputeAt(block, loop);
   trace_.Append(ScheduleDesc::Step(
       "ComputeAt", {{"block", std::vector<Expr>({block})}, {"loop", std::vector<Expr>({loop})}}, {}, {}));
@@ -1536,12 +1579,14 @@ void IRSchedule::SimpleComputeAt(const Expr& block, const Expr& loop) {
 }
 
 Expr IRSchedule::GetRootBlock(const Expr& expr) const {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->GetRootBlock(expr);
   trace_.Append(ScheduleDesc::Step("GetRootBlock", {{"expr", std::vector<Expr>({expr})}}, {}, {result}));
   return result;
 }
 
 Expr IRSchedule::CacheRead(const Expr& block, int read_buffer_index, const std::string& memory_type) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->CacheRead(block, read_buffer_index, memory_type);
   trace_.Append(ScheduleDesc::Step("CacheRead",
                                    {{"block", std::vector<Expr>({block})}},
@@ -1566,54 +1611,64 @@ void IRSchedule::SyncThreads(const Expr& ir_node, bool after_node) {
 }
 
 void IRSchedule::SetBuffer(Expr& block, const std::string& memory_type, bool fixed) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->SetBuffer(block, memory_type, fixed);
   trace_.Append(ScheduleDesc::Step(
       "SetBuffer", {{"block", std::vector<Expr>({block})}}, {{"memory_type", memory_type}, {"fixed", fixed}}, {}));
 }
 
 void IRSchedule::Reorder(const std::vector<Expr>& loops) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Reorder(loops);
   trace_.Append(ScheduleDesc::Step("Reorder", {{"loops", loops}}, {}, {}));
 }
 
 void IRSchedule::Reorder(const std::string& block_name, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Reorder(block_name, loops_index);
   trace_.Append(
       ScheduleDesc::Step("ReorderWithName", {}, {{"block_name", block_name}, {"loops_index", loops_index}}, {}));
 }
 
 void IRSchedule::Reorder(const Expr& block, const std::vector<int>& loops_index) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Reorder(block, loops_index);
   trace_.Append(ScheduleDesc::Step(
       "ReorderWithBlock", {{"block", std::vector<Expr>({block})}}, {{"loops_index", loops_index}}, {}));
 }
 
 void IRSchedule::Parallel(const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Parallel(loop);
   trace_.Append(ScheduleDesc::Step("Parallel", {{"loop", std::vector<Expr>({loop})}}, {}, {}));
 }
 
 void IRSchedule::Vectorize(const Expr& loop, int factor) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Vectorize(loop, factor);
   trace_.Append(ScheduleDesc::Step("Vectorize", {{"loop", std::vector<Expr>({loop})}}, {{"factor", factor}}, {}));
 }
 
 void IRSchedule::Unroll(const Expr& loop) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Unroll(loop);
   trace_.Append(ScheduleDesc::Step("Unroll", {{"loop", std::vector<Expr>({loop})}}, {}, {}));
 }
 
 void IRSchedule::ComputeInline(const Expr& schedule_block) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->ComputeInline(schedule_block);
   trace_.Append(ScheduleDesc::Step("ComputeInline", {{"schedule_block", std::vector<Expr>({schedule_block})}}, {}, {}));
 }
 
 void IRSchedule::Bind(const Expr& loop, const std::string& thread_axis) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->Bind(loop, thread_axis);
   trace_.Append(ScheduleDesc::Step("Bind", {{"loop", std::vector<Expr>({loop})}}, {{"thread_axis", thread_axis}}, {}));
 }
 
 Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
+  LOG(INFO) << "---- trace func: " << __func__;
   auto result = impl_->Rfactor(rf_loop, rf_axis);
   trace_.Append(
       ScheduleDesc::Step("Rfactor", {{"rf_loop", std::vector<Expr>({rf_loop})}}, {{"rf_axis", rf_axis}}, {result}));
@@ -1621,11 +1676,13 @@ Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
 }
 
 void IRSchedule::CopyTransformAndLoopInfo(const Expr& block, const Expr& block_target) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->CopyTransformAndLoopInfo(block, block_target);
   // don't support to trace, because we can't ensure both blocks are from the same ModuleExpr
 }
 
 void IRSchedule::CopyTransformAndLoopInfo(const std::string& block_name, const std::string& block_target_name) {
+  LOG(INFO) << "---- trace func: " << __func__;
   impl_->CopyTransformAndLoopInfo(block_name, block_target_name);
   // don't support to trace, because we can't ensure both blocks are from the same ModuleExpr
 }

@@ -718,7 +718,7 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
 
       OpLowerer op_lowerer(dtype_dict, shape_dict, target_);
       for (auto& group : graph_->fusion_groups) {
-        VLOG(3) << "group_id is : " << group->group_id << ", and its number is : " << group->nodes.size();
+        LOG(INFO) << "group_id is : " << group->group_id << ", and its number is : " << group->nodes.size();
         groups.push_back(std::move(group->CollectNodes()));
         // set node as output node from fetch_var_ids.
         for (auto node : groups.back()) {
@@ -735,16 +735,17 @@ GraphCompiler::CompilationResult GraphCompiler::Build(const GraphCompiler::Compi
         }
         local_lowered_funcs.emplace_back(std::move(op_lowerer.Lower(group)));
         CHECK_EQ(local_lowered_funcs.back().size(), 1) << "Lowerd Function Is Not Equal 1!";
-        VLOG(3) << local_lowered_funcs.back()[0];
+        LOG(INFO) << local_lowered_funcs.back()[0];
       }
     } else {
-      VLOG(3) << "fusion_groups is empty";
+      LOG(INFO) << "fusion_groups is empty";
       std::vector<ir::LoweredFunc> lowered_func;
       if (FLAGS_cinn_ir_schedule) {
         auto& dtype_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
         auto& shape_dict = graph_->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
         for (int i = 0; i < groups.size(); i++) {
           for (int j = 0; j < groups[i].size(); j++) {
+            LOG(INFO) << "ir schedule graph id = (" << i << ", " << j << ")";
             lowered_func = GetOpFuncWithIRSchedule(groups[i][j], dtype_dict, shape_dict);
             local_lowered_funcs.emplace_back(std::move(lowered_func));
           }
