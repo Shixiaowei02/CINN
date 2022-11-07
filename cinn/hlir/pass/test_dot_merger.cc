@@ -32,68 +32,23 @@ namespace cinn::frontend::pass {
  */
 
 TEST(DotMerger, lhs) {
-  if (!IsCompiledWithCUDA()) {
-    // because op def changes with the macro
-    return;
-  }
-  int m = 2, k = 10201, n1 = 100, n2 = 100, n3 = 100, axis = 1;
+  int m = 2, k = 2, n1 = 2, n2 = 2, n3 = 2, axis = 1;
   NetBuilder builder("net_builder");
-  auto a  = builder.CreateInput(Float(32), {m, k}, "A");
-  auto b  = builder.CreateInput(Float(32), {k, n1}, "B");
-  auto c  = builder.CreateInput(Float(32), {k, n2}, "C");
-  auto c1 = builder.CreateInput(Float(32), {k, n3}, "E");
-  auto d  = builder.Matmul(a, b);
-  auto e  = builder.Matmul(a, c);
-  auto e1 = builder.Matmul(a, c1);
-  auto f  = builder.CreateInput(Float(32), {m, n1}, "D");
-  auto g  = builder.Add(d, f);
-  auto h  = builder.Add(e, g);
-  auto h1 = builder.Add(e1, h);
-  auto p  = builder.Build();
+  auto a = builder.CreateInput(Float(32), {m, k}, "A");
+  auto b = builder.CreateInput(Float(32), {k, n1}, "B");
+  auto c = builder.Add(a, b);
+  auto d = builder.Cast(c, "float16");
+  auto p = builder.Build();
 
-  Target target = common::DefaultNVGPUTarget();
+  // Target target = common::DefaultNVGPUTarget();
+  Target target = common::DefaultHostTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id(), c1.id()},
+  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id()},
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
   OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput"}, {}},
                         {{"OpFusionPass", "FusionMergePass"}, {"DotMerger", "OpFusionPass", "FusionMergePass"}});
-  CompareResult(&p, target, input_ids, {h1->id}, 0, std::move(passes), 123, true);
-}
-
-/*
- * DotMerger Test
- *
- * Before:
- * (m1, k) * (k, n) -> (m1, n)  ==> (m1 + m2, n)
- * (m2, k) * (k, n) -> (m2, n)
- *
- * After:
- * (m1, k) concat (m2, k) -> (m1 + m2, k)
- * (m1 + m2, k) * (k, n) -> (m1 + m2, n)
- * (m1 + m2, n) slice -> (m1, n), (m2, n)
- */
-
-TEST(DotMerger, rhs) {
-  if (!IsCompiledWithCUDA()) {
-    return;
-  }
-  NetBuilder builder("net_builder");
-  int m1 = 50, m2 = 50, k = 10201, n = 2, axis = 0;
-  auto a        = builder.CreateInput(Float(32), {m1, k}, "A");
-  auto b        = builder.CreateInput(Float(32), {m2, k}, "B");
-  auto c        = builder.CreateInput(Float(32), {k, n}, "C");
-  auto d        = builder.Matmul(a, c);
-  auto e        = builder.Matmul(b, c);
-  auto f        = builder.Concat({d, e}, axis);
-  auto p        = builder.Build();
-  Target target = common::DefaultNVGPUTarget();
-  std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{a.id(), b.id(), c.id()},
-                    std::back_inserter(input_ids),
-                    [](absl::string_view id) { return std::string(id); });
-  OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput", "GemmRewriter"}, {}},
-                        {{"OpFusionPass", "FusionMergePass"}, {"DotMerger", "OpFusionPass", "FusionMergePass"}});
-  CompareResult(&p, target, input_ids, {f->id}, 0, std::move(passes), 123, true);
+  CompareResult(&p, target, input_ids, {d->id}, 0, std::move(passes), 123, true);
+  LOG(INFO) << "Finished.";
 }
 }  // namespace cinn::frontend::pass
