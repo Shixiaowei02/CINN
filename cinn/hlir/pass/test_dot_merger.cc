@@ -31,6 +31,7 @@ namespace cinn::frontend::pass {
  * (m, n1 + n2) slice -> (m, n1), (m, n2)
  */
 
+/*
 TEST(DotMerger, lhs) {
   int m = 2, k = 2, n1 = 2, n2 = 2, n3 = 2, axis = 1;
   NetBuilder builder("net_builder");
@@ -51,4 +52,25 @@ TEST(DotMerger, lhs) {
   CompareResult(&p, target, input_ids, {d->id}, 0, std::move(passes), 123, true);
   LOG(INFO) << "Finished.";
 }
+*/
+
+TEST(DotMerger, lhs) {
+  int m = 2, k = 2, n1 = 2, n2 = 2, n3 = 2, axis = 1;
+  NetBuilder builder("net_builder");
+  auto a = builder.CreateInput(Float(32), {m, k}, "A");
+  auto d = builder.Cast(a, "int64");
+  auto p = builder.Build();
+
+  // Target target = common::DefaultNVGPUTarget();
+  Target target = common::DefaultHostTarget();
+  std::vector<std::string> input_ids;
+  absl::c_transform(std::vector<absl::string_view>{a.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
+    return std::string(id);
+  });
+  OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput"}, {}},
+                        {{"OpFusionPass", "FusionMergePass"}, {"DotMerger", "OpFusionPass", "FusionMergePass"}});
+  CompareResult(&p, target, input_ids, {d->id}, 0, std::move(passes), 123, true);
+  LOG(INFO) << "Finished.";
+}
+
 }  // namespace cinn::frontend::pass
