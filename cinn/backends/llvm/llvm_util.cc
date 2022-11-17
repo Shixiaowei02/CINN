@@ -61,8 +61,6 @@ llvm::Type *CinnTypeToLLVMType(common::Type type, llvm::Module *m, bool is_vec) 
     ir_type = f32;
   } else if (type.is_float(64)) {
     ir_type = f64;
-  } else if (type.is_float(16)) {
-    ir_type = f16;
   } else if (type.is_void()) {
     ir_type = v;
   } else if (type.is_string()) {
