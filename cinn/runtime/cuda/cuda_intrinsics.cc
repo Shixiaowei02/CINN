@@ -20,7 +20,7 @@
 #include "cinn/runtime/cuda/cuda_util.h"
 #include "cinn/runtime/custom_function.h"
 
-using cinn::common::float16;
+// using cinn::common::float16;
 
 CINN_REGISTER_HELPER(cuda_intrinsics) {
   auto target = cinn::common::DefaultNVGPUTarget();

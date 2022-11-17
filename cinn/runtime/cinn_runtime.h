@@ -32,8 +32,17 @@
 #include <functional>
 #include <vector>
 
-#include "cinn/common/float16.h"
+#include "cinn/common/test.h"
 #endif
+
+/*
+struct test {
+uint32_t x;
+#ifdef __cplusplus
+test(uint32_t data) : x(data) {}
+#endif
+};
+*/
 
 #ifdef __cplusplus
 extern "C" {

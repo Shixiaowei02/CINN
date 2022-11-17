@@ -49,6 +49,7 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 
 #include <cmath>
+#include <iostream>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -171,7 +172,7 @@ void ExecutionEngine::Link(const ir::Module &module) {
   optimize(m.get());
   CHECK(!llvm::verifyModule(*m, &llvm::errs())) << "Invalid optimized module detected";
   for (auto &f : *m) {
-    VLOG(5) << "function: " << DumpToString(f);
+    // LOG(INFO) << "function: " << DumpToString(f);
   }
 
   llvm::raw_svector_ostream rawstream(buffer_);
@@ -182,26 +183,26 @@ void ExecutionEngine::Link(const ir::Module &module) {
   CHECK(AddModule(std::move(m), std::move(ctx)));
 
   decltype(auto) es = jit_->getExecutionSession();
-  if (false) {
-    VLOG(3) << "======= dump jit execution session ======";
+  if (true) {
+    LOG(INFO) << "======= dump jit execution session ======";
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
     es.dump(os);
     os.flush();
-    VLOG(3) << buffer;
+    std::cout << buffer << std::endl;
   }
 }
 
 bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module, std::unique_ptr<llvm::LLVMContext> context) {
   module->setDataLayout(jit_->getDataLayout());
-  if (false) {
-    VLOG(3) << "======= dump jit lib ==========";
+  if (true) {
+    LOG(INFO) << "======= dump jit lib ==========";
     std::string buffer;
     llvm::raw_string_ostream os(buffer);
     module->print(os, {});
     // main_jd_->dump(os);
     os.flush();
-    VLOG(3) << buffer;
+    std::cout << buffer << std::endl;
   }
   llvm::orc::ThreadSafeContext tsc(std::move(context));
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
@@ -216,6 +217,7 @@ void ExecutionEngine::ExportObject(const std::string &path) {
 }
 
 void *ExecutionEngine::Lookup(absl::string_view name) {
+  LOG(INFO) << "ExecutionEngine lookup: " << name;
   std::lock_guard<std::mutex> lock(mu_);
   if (auto symbol = jit_->lookup(AsStringRef(name))) {
     return reinterpret_cast<void *>(symbol->getAddress());

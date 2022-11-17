@@ -119,7 +119,6 @@ Expr min_value(const Type& type) {
   FOR_CASE(int64_t)
   FOR_CASE(uint32_t)
   FOR_CASE(uint64_t)
-  FOR_CASE(float16)
   FOR_CASE(float)
   FOR_CASE(double)
 #undef FOR_CASE
@@ -137,7 +136,6 @@ Expr max_value(const Type& type) {
   FOR_CASE(int64_t)
   FOR_CASE(uint32_t)
   FOR_CASE(uint64_t)
-  FOR_CASE(float16)
   FOR_CASE(float)
   FOR_CASE(double)
 #undef FOR_CASE
@@ -157,7 +155,6 @@ Expr Epsilon(const Type& type) {
   FOR_CASE(int64_t)
   FOR_CASE(uint32_t)
   FOR_CASE(uint64_t)
-  FOR_CASE(float16)
   FOR_CASE(float)
   FOR_CASE(double)
 #undef FOR_CASE
@@ -206,8 +203,6 @@ Expr Infinity(const Type& type) {
       return make_const(type, std::numeric_limits<double>::infinity());
     } else if (type.bits() == 32) {
       return make_const(type, std::numeric_limits<float>::infinity());
-    } else if (type.bits() == 16) {
-      return make_const(type, std::numeric_limits<float16>::infinity());
     }
   }
   LOG(FATAL) << "Cannot decide infinity for type " << type;

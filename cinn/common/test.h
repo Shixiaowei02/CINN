@@ -32,9 +32,9 @@ namespace common {
 // and aligned at least on a 2-byte boundary, which leads to efficient
 // memory access of float16 struct and also makes float16 compatible
 // with CUDA half
-struct float16 {
+struct float16111 {
  public:
-  uint16_t x;
+  int x;
   /*
     // The following defaulted special class member functions
     // are added to make float16 pass the std::is_trivial test

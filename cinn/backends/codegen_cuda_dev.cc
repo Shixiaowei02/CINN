@@ -33,10 +33,10 @@ const std::string CodeGenCUDA_Dev::source_header_ =
     R"(#include <cstdint>
 
 #define CINN_WITH_CUDA
-#include "float16.h"
-using cinn::common::float16;
+//#include "float16.h"
+//using cinn::common1::float16;
 
-#include "cinn_cuda_runtime_source.cuh"
+//#include "cinn_cuda_runtime_source.cuh"
 )";
 
 const std::string &CodeGenCUDA_Dev::GetSourceHeader() const { return source_header_; }

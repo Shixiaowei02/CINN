@@ -48,7 +48,7 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr, const std::string &tensor
 // @{
 inline Expr make_const(int32_t x) { return Expr(static_cast<int32_t>(x)); }
 inline Expr make_const(int64_t x) { return Expr(static_cast<int64_t>(x)); }
-inline Expr make_const(float16 x) { return Expr(static_cast<float16>(x)); }
+// inline Expr make_const(float16 x) { return Expr(static_cast<float16>(x)); }
 inline Expr make_const(float x) { return Expr(static_cast<float>(x)); }
 inline Expr make_const(double x) { return Expr(static_cast<double>(x)); }
 inline Expr make_const(bool x) { return Expr(static_cast<bool>(x)); }
