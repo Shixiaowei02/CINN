@@ -25,7 +25,7 @@
 #include "cinn/runtime/use_extern_funcs.h"
 #include "cinn/utils/timer.h"
 
-#define COMPILE_CUDA 1
+#define COMPILE_X86 1
 
 namespace cinn {
 namespace backends {
