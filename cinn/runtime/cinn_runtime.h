@@ -32,7 +32,7 @@
 #include <functional>
 #include <vector>
 
-#include "cinn/common/test.h"
+#include "cinn/common/float16.h"
 #endif
 
 /*
