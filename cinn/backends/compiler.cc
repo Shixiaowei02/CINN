@@ -132,7 +132,6 @@ void Compiler::CompileX86Module(const Module& module) { engine_->Link<CodeGenX86
 void Compiler::ExportObject(const std::string& path) { engine_->ExportObject(path); }
 
 void* Compiler::Lookup(absl::string_view fn_name) {
-  LOG(INFO) << "complier lookup: " << fn_name;
   CHECK(engine_);
   if (engine_->Lookup(fn_name) != nullptr) {
     return engine_->Lookup(fn_name);

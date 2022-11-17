@@ -596,7 +596,6 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
   Print(func_body);
 }
 void CodeGenC::PrintIncludes() {
-  LOG(FATAL) << "FATAL!";
   os() << "#include <cinn_runtime.h>\n";
   os() << "#include <stdio.h>\n";
   os() << "\n";

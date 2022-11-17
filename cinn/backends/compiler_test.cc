@@ -25,11 +25,9 @@
 #include "cinn/runtime/use_extern_funcs.h"
 #include "cinn/utils/timer.h"
 
-#define COMPILE_X86 1
-
 namespace cinn {
 namespace backends {
-#ifdef COMPILE_X86
+
 TEST(Compiler, x86) {
   Expr M(1024), N(1024);
 
@@ -77,8 +75,8 @@ TEST(Compiler, x86) {
     }
   }
 }
-#endif
-#ifdef COMPILE_CUDA
+
+#if 0
 TEST(Compiler, cuda) {
   Expr M(1024), N(1024);
 
@@ -157,8 +155,7 @@ TEST(Compiler, cuda) {
     }
   }
 }
-#endif
-#if 0
+
 TEST(Compiler, sqrt) {
   Expr N(100);
   Expr C(10);
@@ -194,5 +191,6 @@ TEST(Compiler, sqrt) {
   compiler->Build(builder.Build());
 }
 #endif
+
 }  // namespace backends
 }  // namespace cinn
