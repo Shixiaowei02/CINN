@@ -174,6 +174,7 @@ class TestInstruction : public Instruction {
       runtime::cuda::cinn_call_cudnn_conv2d_forward(pod_args_.data(),
                                                     pod_args_.size(),
                                                     0,
+                                                    0,
                                                     1.0f,
                                                     0.0f,
                                                     args_[0],

@@ -244,6 +244,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // data_type
       .AddInputType<bool>()    // trans_a
       .AddInputType<bool>()    // trans_b
       .AddInputType<float>()   // alpha
@@ -266,6 +267,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
       .AddInputType<int>()     // format
+      .AddInputType<int>()     // data_type
       .AddInputType<float>()   // alpha
       .AddInputType<float>()   // beta
       .AddInputType<int>()     // in
@@ -409,6 +411,7 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<int>()     // num_args
       .AddInputType<int>()     // mode
       .AddInputType<int>()     // format
+      .AddInputType<int>()     // data_type
       .AddInputType<float>()   // alpha
       .AddInputType<float>()   // beta
       .AddInputType<int>()     // in

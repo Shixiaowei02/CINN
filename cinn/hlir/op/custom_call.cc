@@ -121,6 +121,17 @@ std::vector<ir::Expr> CustomCallArgsForCublas(const framework::NodeAttr &attrs,
   CHECK_EQ(output_shapes.size(), 1);
   CHECK_LE(inputs[0]->shape.size(), 4);
   CHECK_LE(inputs[1]->shape.size(), 4);
+  CHECK_EQ(inputs[0]->type(), inputs[1]->type());
+
+  int data_type;
+  if (inputs[0]->type() == common::F16()) {
+    // TODO(Shixiaowei02): Enum need to be used instead of magic numbers.
+    data_type = 2;
+  } else if (inputs[0]->type() == common::F32()) {
+    data_type = 0;
+  } else {
+    LOG(FATAL) << "The data type of cublas is illegal.";
+  }
 
   auto attr_store = attrs.attr_store;
   bool trans_a    = attr_store.count("trans_a") ? absl::get<bool>(attr_store.at("trans_a")) : false;
@@ -184,7 +195,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(const framework::NodeAttr &attrs,
   CHECK_EQ(b_shape.size(), 4);
   // func args
   std::vector<ir::Expr> args = {
-      ir::Expr(trans_a), ir::Expr(trans_b), ir::Expr(trans_out), ir::Expr(alpha), ir::Expr(beta)};
+      ir::Expr(data_type), ir::Expr(trans_a), ir::Expr(trans_b), ir::Expr(trans_out), ir::Expr(alpha), ir::Expr(beta)};
   args.insert(args.end(), a_shape.begin(), a_shape.end());
   args.insert(args.end(), b_shape.begin(), b_shape.end());
   return args;
@@ -196,6 +207,7 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(const framework::NodeAtt
                                                         const std::vector<ir::Tensor> &inputs,
                                                         const std::vector<std::vector<int>> &output_shapes) {
   CHECK_EQ(inputs.size(), 2UL);
+  CHECK_EQ(inputs[0]->type(), inputs[1]->type());
   // CHECK_EQ(output_shapes.size(), 1UL);
   auto attr_store = attrs.attr_store;
   float alpha     = attr_store.count("alpha") ? absl::get<float>(attr_store.at("alpha")) : 1.0f;
@@ -225,7 +237,16 @@ std::vector<ir::Expr> CustomCallArgsForCudnnConvForward(const framework::NodeAtt
     output = {output[0], output[3], output[1], output[2]};
   }
 
-  std::vector<ir::Expr> args = {ir::Expr(static_cast<int>(format)), ir::Expr(alpha), ir::Expr(beta)};
+  std::vector<ir::Expr> args = {ir::Expr(static_cast<int>(format))};
+  if (inputs[0]->type() == common::F16()) {
+    args.push_back(ir::Expr(static_cast<int>(2)));
+  } else if (inputs[0]->type() == common::F32()) {
+    args.push_back(ir::Expr(static_cast<int>(0)));
+  } else {
+    LOG(FATAL) << "The data type of cudnn conv2d is illegal.";
+  }
+  args.push_back(ir::Expr(alpha));
+  args.push_back(ir::Expr(beta));
   args.insert(args.end(), input.begin(), input.end());
   args.insert(args.end(), filter.begin(), filter.end());
   args.push_back(ir::Expr(padding[0]));

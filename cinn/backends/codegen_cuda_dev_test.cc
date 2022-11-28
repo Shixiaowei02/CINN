@@ -2774,7 +2774,7 @@ TEST(Cudnn, external_function_cudnn) {
   cinn_pod_value_t v_args[3] = {
       cinn_pod_value_t(dev_bufs[0]), cinn_pod_value_t(dev_bufs[1]), cinn_pod_value_t(dev_bufs[2])};
   runtime::cuda::cinn_call_cudnn_conv2d_forward(
-      v_args, 3, 0, 1.0f, 0.0f, 2, 512, 7, 7, 512, 512, 3, 3, 1, 1, 1, 1, 1, 1, 1, 2, 512, 7, 7, stream);
+      v_args, 3, 0, 0, 1.0f, 0.0f, 2, 512, 7, 7, 512, 512, 3, 3, 1, 1, 1, 1, 1, 1, 1, 2, 512, 7, 7, stream);
   cudaStreamSynchronize(stream);
 }
 
@@ -2826,7 +2826,7 @@ TEST(Cudnn, external_function_cudnn3) {
 
   cudaStream_t stream        = nullptr;
   cinn_pod_value_t v_args[2] = {cinn_pod_value_t(dev_bufs[0]), cinn_pod_value_t(dev_bufs[1])};
-  runtime::cuda::cinn_call_cudnn_softmax_forward(v_args, 2, 0, 0, 1.0f, 0.0f, 2, 1, 1, 1000, 2, 1, 1, 1000, stream);
+  runtime::cuda::cinn_call_cudnn_softmax_forward(v_args, 2, 0, 0, 0, 1.0f, 0.0f, 2, 1, 1, 1000, 2, 1, 1, 1000, stream);
   cudaStreamSynchronize(stream);
 }
 #endif
