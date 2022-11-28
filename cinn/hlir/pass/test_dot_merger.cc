@@ -30,7 +30,7 @@ namespace cinn::frontend::pass {
  * (m, k) * (k, n1 + n2) -> (m, n1 + n2)
  * (m, n1 + n2) slice -> (m, n1), (m, n2)
  */
-
+/*
 TEST(DotMerger, lhs) {
   if (!IsCompiledWithCUDA()) {
     // because op def changes with the macro
@@ -60,7 +60,7 @@ TEST(DotMerger, lhs) {
                         {{"OpFusionPass", "FusionMergePass"}, {"DotMerger", "OpFusionPass", "FusionMergePass"}});
   CompareResult(&p, target, input_ids, {h1->id}, 0, std::move(passes), 123, true);
 }
-
+*/
 /*
  * DotMerger Test
  *
@@ -79,10 +79,10 @@ TEST(DotMerger, rhs) {
     return;
   }
   NetBuilder builder("net_builder");
-  int m1 = 50, m2 = 50, k = 10201, n = 2, axis = 0;
-  auto a        = builder.CreateInput(Float(32), {m1, k}, "A");
-  auto b        = builder.CreateInput(Float(32), {m2, k}, "B");
-  auto c        = builder.CreateInput(Float(32), {k, n}, "C");
+  int m1 = 5, m2 = 5, k = 10, n = 2, axis = 0;
+  auto a        = builder.CreateInput(Float(16), {m1, k}, "A");
+  auto b        = builder.CreateInput(Float(16), {m2, k}, "B");
+  auto c        = builder.CreateInput(Float(16), {k, n}, "C");
   auto d        = builder.Matmul(a, c);
   auto e        = builder.Matmul(b, c);
   auto f        = builder.Concat({d, e}, axis);
@@ -93,7 +93,8 @@ TEST(DotMerger, rhs) {
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
   OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput", "GemmRewriter"}, {}},
-                        {{"OpFusionPass", "FusionMergePass"}, {"DotMerger", "OpFusionPass", "FusionMergePass"}});
+                        {{"OpFusionPass", "FusionMergePass"},
+                         {"DotMerger", "MatmulToCublasCustomCallPass", "OpFusionPass", "FusionMergePass"}});
   CompareResult(&p, target, input_ids, {f->id}, 0, std::move(passes), 123, true);
 }
 }  // namespace cinn::frontend::pass

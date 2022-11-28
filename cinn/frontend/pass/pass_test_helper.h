@@ -95,13 +95,13 @@ void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   runtime_program->Execute();
 }
 
-std::vector<float> RunProgram(const Program& program,
-                              const common::Target& target,
-                              const std::vector<std::string>& input_ids,
-                              const std::vector<std::string>& output_ids,
-                              const std::vector<std::string>& graph_passes,
-                              int seed          = -1,
-                              bool print_tensor = false) {
+std::vector<common::float16> RunProgram(const Program& program,
+                                        const common::Target& target,
+                                        const std::vector<std::string>& input_ids,
+                                        const std::vector<std::string>& output_ids,
+                                        const std::vector<std::string>& graph_passes,
+                                        int seed          = -1,
+                                        bool print_tensor = false) {
   std::unordered_set<std::string> outputs_set{output_ids.begin(), output_ids.end()};
   auto graph = std::make_shared<hlir::framework::Graph>(program, outputs_set, target);
   auto scope = hlir::framework::BuildScope(target, graph);
@@ -109,6 +109,7 @@ std::vector<float> RunProgram(const Program& program,
     scope->Var<hlir::framework::Tensor>(input_id);
     auto input_tensor = scope->GetTensor(input_id);
     SetRandData<int>(input_tensor, target, seed);
+    /*
     if (print_tensor) {
       auto tensor_data = GetTensorData<float>(input_tensor, target);
       if (input_tensor->shape().data().size() == 2) {
@@ -120,12 +121,14 @@ std::vector<float> RunProgram(const Program& program,
                     input_tensor->shape().data()[2]);
       }
     }
+    */
   }
 
   RunGraph(graph, target, scope, output_ids, graph_passes);
 
   auto output_tensor = scope->GetTensor(output_ids.front());
-  auto output_data   = GetTensorData<float>(output_tensor, target);
+  auto output_data   = GetTensorData<common::float16>(output_tensor, target);
+  /*
   if (print_tensor) {
     if (output_tensor->shape().data().size() == 2) {
       PrintMatrix(output_data, 1, output_tensor->shape().data()[0], output_tensor->shape().data()[1]);
@@ -136,6 +139,7 @@ std::vector<float> RunProgram(const Program& program,
                   output_tensor->shape().data()[2]);
     }
   }
+  */
   return output_data;
 }
 

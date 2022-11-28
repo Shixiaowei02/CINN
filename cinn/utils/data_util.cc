@@ -51,15 +51,15 @@ void SetRandData<int>(hlir::framework::Tensor tensor, const common::Target& targ
   std::default_random_engine engine(seed);
   std::uniform_int_distribution<int> dist(1, 10);
   size_t num_ele = tensor->shape().numel();
-  std::vector<float> random_data(num_ele);
+  std::vector<common::float16> random_data(num_ele);
   for (size_t i = 0; i < num_ele; i++) {
-    random_data[i] = static_cast<float>(dist(engine));  // All random data
+    random_data[i] = static_cast<common::float16>(dist(engine));  // All random data
   }
 
-  auto* data = tensor->mutable_data<float>(target);
+  auto* data = tensor->mutable_data<common::float16>(target);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data, random_data.data(), num_ele * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(data, random_data.data(), num_ele * sizeof(common::float16), cudaMemcpyHostToDevice);
     return;
   }
 #endif
@@ -112,6 +112,29 @@ std::vector<float> GetTensorData<float>(const hlir::framework::Tensor& tensor, c
 #else
   CHECK(target == common::DefaultHostTarget());
   std::copy(tensor->data<float>(), tensor->data<float>() + size, data.begin());
+#endif
+  return data;
+}
+
+template <>
+std::vector<common::float16> GetTensorData<common::float16>(const hlir::framework::Tensor& tensor,
+                                                            const common::Target& target) {
+  auto size = tensor->shape().numel();
+  std::vector<common::float16> data(size);
+#ifdef CINN_WITH_CUDA
+  if (target == common::DefaultNVGPUTarget()) {
+    cudaMemcpy(data.data(),
+               static_cast<const void*>(tensor->data<common::float16>()),
+               size * sizeof(common::float16),
+               cudaMemcpyDeviceToHost);
+  } else if (target == common::DefaultHostTarget()) {
+    std::copy(tensor->data<common::float16>(), tensor->data<common::float16>() + size, data.begin());
+  } else {
+    CINN_NOT_IMPLEMENTED
+  }
+#else
+  CHECK(target == common::DefaultHostTarget());
+  std::copy(tensor->data<common::float16>(), tensor->data<common::float16>() + size, data.begin());
 #endif
   return data;
 }
