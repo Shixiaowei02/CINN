@@ -72,7 +72,9 @@ namespace frontend {
   macro__(Negative) \
   macro__(Sign) \
   macro__(Abs) \
-  macro__(Clz)
+  macro__(Clz) \
+  macro__(Popc) \
+  macro__(Reciprocal)
 
 // ******************************************* //
 // The op has two input and one output, with a attribute [axis]
