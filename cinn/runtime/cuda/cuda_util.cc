@@ -320,9 +320,12 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
 
   cudnnDataType_t data_type;
-  if (args[0].type_code() == cinn_type_code<cinn::common::float16>()) {
+
+  bool type_code = args[0].operator cinn_buffer_t *()->type.code == cinn_type_float;
+  int bits       = args[0].operator cinn_buffer_t *()->type.bits;
+  if (type_code && bits == 16) {
     data_type = CUDNN_DATA_HALF;
-  } else if (args[0].type_code() == cinn_type_code<float>()) {
+  } else if (type_code && bits == 32) {
     data_type = CUDNN_DATA_FLOAT;
   } else {
     LOG(FATAL) << "unsupported cudnn conv2d input data type.";
@@ -714,12 +717,14 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
 
   cudnnDataType_t data_type;
-  if (args[0].type_code() == cinn_type_code<cinn::common::float16>()) {
+  bool type_code = args[0].operator cinn_buffer_t *()->type.code == cinn_type_float;
+  int bits       = args[0].operator cinn_buffer_t *()->type.bits;
+  if (type_code && bits == 16) {
     data_type = CUDNN_DATA_HALF;
-  } else if (args[0].type_code() == cinn_type_code<float>()) {
+  } else if (type_code && bits == 32) {
     data_type = CUDNN_DATA_FLOAT;
   } else {
-    LOG(FATAL) << "unsupported cudnn softmax input data type.";
+    LOG(FATAL) << "unsupported cudnn conv2d input data type.";
   }
 
   cudnnTensorDescriptor_t x_desc;
