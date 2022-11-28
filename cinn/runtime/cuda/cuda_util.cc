@@ -103,6 +103,7 @@ void cinn_call_cublas(void *v_args,
                       int b3,
                       int b4,
                       void *stream) {
+  LOG(INFO) << "data_type = " << data_type;
   CHECK_EQ(num_args, 3);
   cublasHandle_t &cuhandle = CublasHandle::GetInstance().GetCublasHandle();
   cinn_pod_value_t *args   = static_cast<cinn_pod_value_t *>(v_args);
