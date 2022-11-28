@@ -128,12 +128,15 @@ void cinn_call_cublas(void *v_args,
   void *rhs = trans_o ? B : A;
 
   cudaDataType_t cuda_dtype;
-  if (args[0].type_code() == cinn_type_code<cinn::common::float16>()) {
+  auto type_code = args[0].operator cinn_buffer_t *()->type.code;
+  bool is_float  = type_code == cinn_type_float;
+  int bits       = args[0].operator cinn_buffer_t *()->type.bits;
+  if (is_float && bits == 16) {
     cuda_dtype = CUDA_R_16F;
-  } else if (args[0].type_code() == cinn_type_code<float>()) {
+  } else if (is_float && bits == 32) {
     cuda_dtype = CUDA_R_32F;
   } else {
-    LOG(FATAL) << "unsupported cublas data type.";
+    LOG(FATAL) << "unsupported cublas data type: " << static_cast<int>(type_code) << ", bits = " << bits;
   }
 
   if (a1 * a2 * b1 * b2 == 1) {
@@ -320,15 +323,15 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
 
   cudnnDataType_t data_type;
-
-  bool type_code = args[0].operator cinn_buffer_t *()->type.code == cinn_type_float;
+  auto type_code = args[0].operator cinn_buffer_t *()->type.code;
+  bool is_float  = type_code == cinn_type_float;
   int bits       = args[0].operator cinn_buffer_t *()->type.bits;
-  if (type_code && bits == 16) {
+  if (is_float && bits == 16) {
     data_type = CUDNN_DATA_HALF;
-  } else if (type_code && bits == 32) {
+  } else if (is_float && bits == 32) {
     data_type = CUDNN_DATA_FLOAT;
   } else {
-    LOG(FATAL) << "unsupported cudnn conv2d input data type.";
+    LOG(FATAL) << "unsupported cudnn conv2d input data type: " << static_cast<int>(type_code) << ", bits = " << bits;
   }
 
   cudnnTensorDescriptor_t x_desc;
@@ -717,14 +720,15 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
   cudnnTensorFormat_t tensor_format = static_cast<cudnnTensorFormat_t>(format);
 
   cudnnDataType_t data_type;
-  bool type_code = args[0].operator cinn_buffer_t *()->type.code == cinn_type_float;
+  auto type_code = args[0].operator cinn_buffer_t *()->type.code;
+  bool is_float  = type_code == cinn_type_float;
   int bits       = args[0].operator cinn_buffer_t *()->type.bits;
-  if (type_code && bits == 16) {
+  if (is_float && bits == 16) {
     data_type = CUDNN_DATA_HALF;
-  } else if (type_code && bits == 32) {
+  } else if (is_float && bits == 32) {
     data_type = CUDNN_DATA_FLOAT;
   } else {
-    LOG(FATAL) << "unsupported cudnn conv2d input data type.";
+    LOG(FATAL) << "unsupported cudnn conv2d input data type: " << static_cast<int>(type_code) << ", bits = " << bits;
   }
 
   cudnnTensorDescriptor_t x_desc;
