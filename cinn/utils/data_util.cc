@@ -53,7 +53,7 @@ void SetRandData<int>(hlir::framework::Tensor tensor, const common::Target& targ
   size_t num_ele = tensor->shape().numel();
   std::vector<common::float16> random_data(num_ele);
   for (size_t i = 0; i < num_ele; i++) {
-    random_data[i] = static_cast<common::float16>(dist(engine));  // All random data
+    random_data[i] = i;
   }
 
   auto* data = tensor->mutable_data<common::float16>(target);
@@ -78,7 +78,7 @@ void SetRandData<float>(hlir::framework::Tensor tensor, const common::Target& ta
   size_t num_ele = tensor->shape().numel();
   std::vector<float> random_data(num_ele);
   for (size_t i = 0; i < num_ele; i++) {
-    random_data[i] = dist(engine);  // All random data
+    random_data[i] = i;
   }
 
   auto* data = tensor->mutable_data<float>(target);

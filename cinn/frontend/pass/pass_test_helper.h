@@ -197,6 +197,8 @@ void CompareResult(Program* program,
   // get original output
   auto origin_out = RunProgram(*program, target, input_ids, output_ids, passes.graph_passes.ctrl, seed, print_tensor);
 
+  LOG(INFO) << "------- finished origin run ------";
+
   // apply fused passes
   ProgramPass::Apply(program, fetch_ids, target, passes.program_passes.exp);
 

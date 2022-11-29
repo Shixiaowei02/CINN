@@ -35,13 +35,14 @@ class Vector {
     CUDA_CALL(cudaMalloc(&ptr_, bytes));
     CUDA_CALL(cudaMemset(ptr_, 0, bytes));
   }
+  Vector(T* ptr, size_t size) : ptr_(ptr), size_(size) {}
   std::vector<T> to_host() const {
     std::vector<T> ret(size_);
     size_t bytes = sizeof(T) * size_;
     CUDA_CALL(cudaMemcpy(ret.data(), ptr_, bytes, cudaMemcpyDeviceToHost));
     return ret;
   }
-  ~Vector() { CUDA_CALL(cudaFree(ptr_)); }
+  ~Vector() {}
   size_t size() const { return size_; }
   T* data() const { return ptr_; }
 

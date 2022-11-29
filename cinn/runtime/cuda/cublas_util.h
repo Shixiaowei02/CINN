@@ -15,11 +15,37 @@
 #include <cublas_v2.h>
 
 #include "cinn/common/type.h"
+#include "cinn/runtime/cuda/test_util.h"
 #include "glog/logging.h"
 
 namespace cinn {
 namespace runtime {
 namespace cuda {
+
+template <typename T>
+void debug_str(int m, int n, int k, const T *A, const T *B, const T *C) {
+  int a_size = m * n;
+  int b_size = n * k;
+  util::Vector<T> tmpA(const_cast<T *>(A), a_size);
+  std::vector<T> tmpA_host = tmpA.to_host();
+  for (int i = 0; i < a_size; ++i) {
+    std::cout << tmpA_host[i] << ", ";
+  }
+  std::cout << '\n';
+  util::Vector<T> tmpB(const_cast<T *>(B), b_size);
+  std::vector<T> tmpB_host = tmpB.to_host();
+  for (int i = 0; i < b_size; ++i) {
+    std::cout << tmpB_host[i] << ", ";
+  }
+  std::cout << '\n';
+  int c_size = m * k;
+  util::Vector<T> tmpC(const_cast<T *>(C), c_size);
+  std::vector<T> tmpC_host = tmpC.to_host();
+  for (int i = 0; i < c_size; ++i) {
+    std::cout << tmpC_host[i] << ", ";
+  }
+  std::cout << '\n';
+}
 
 cublasStatus_t cublasGemm(cudaDataType_t dtype,
                           cublasHandle_t handle,
@@ -37,6 +63,7 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                           void *C,
                           int ldc) {
   if (dtype == CUDA_R_32F) {
+    LOG(INFO) << "--- CUDA_R_32F";
     return cublasSgemm(handle,
                        transa,
                        transb,
@@ -52,20 +79,28 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<float *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
-    return cublasHgemm(handle,
-                       transa,
-                       transb,
-                       m,
-                       n,
-                       k,
-                       reinterpret_cast<const __half *>(alpha),
-                       reinterpret_cast<const __half *>(A),
-                       lda,
-                       reinterpret_cast<const __half *>(B),
-                       ldb,
-                       reinterpret_cast<const __half *>(beta),
-                       reinterpret_cast<__half *>(C),
-                       ldc);
+    LOG(INFO) << "--- CUDA_R_16F";
+    auto ret = cublasHgemm(handle,
+                           transa,
+                           transb,
+                           m,
+                           n,
+                           k,
+                           reinterpret_cast<const __half *>(alpha),
+                           reinterpret_cast<const __half *>(A),
+                           lda,
+                           reinterpret_cast<const __half *>(B),
+                           ldb,
+                           reinterpret_cast<const __half *>(beta),
+                           reinterpret_cast<__half *>(C),
+                           ldc);
+    debug_str(m,
+              n,
+              k,
+              reinterpret_cast<const common::float16 *>(A),
+              reinterpret_cast<const common::float16 *>(B),
+              reinterpret_cast<const common::float16 *>(C));
+    return ret;
   }
   LOG(FATAL) << "Unsupported cublasGemm precision.";
 }
