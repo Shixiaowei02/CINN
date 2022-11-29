@@ -38,9 +38,12 @@ void MatMulOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
   VLOG(4) << out_name << "=matmul{" << x_name << ", " << y_name << ", trans_x=" << trans_x << ", trans_y=" << trans_y
           << ", alpha=" << alpha << "}";
 
-  auto x   = ctx.GetVar(x_name);
-  auto y   = ctx.GetVar(y_name);
-  auto out = ctx.Builder()->Matmul(x, y, trans_x, trans_y, alpha);
+  auto x_fp16   = ctx.GetVar(x_name);
+  auto y_fp16   = ctx.GetVar(y_name);
+  auto x        = ctx.Builder()->Cast(x_fp16, "float32");
+  auto y        = ctx.Builder()->Cast(y_fp16, "float32");
+  auto out_fp32 = ctx.Builder()->Matmul(x, y, trans_x, trans_y, alpha);
+  auto out      = ctx.Builder()->Cast(out_fp32, "float16");
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);

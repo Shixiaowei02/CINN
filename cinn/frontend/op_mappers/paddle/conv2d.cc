@@ -40,9 +40,12 @@ void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
   }
 
   auto padding_algorithm = utils::GetAttrOrDefault<std::string>(op_desc, "padding_algorithm", "EXPLICIT");
-  auto x                 = ctx.GetVar(x_name);
-  Variable y             = ctx.GetVar(y_name);
-  auto out = ctx.Builder()->Conv2d(x, y, strides, paddings, dilations, groups, data_format, padding_algorithm);
+  auto x_fp16            = ctx.GetVar(x_name);
+  auto y_fp16            = ctx.GetVar(y_name);
+  auto x                 = ctx.Builder()->Cast(x_fp16, "float32");
+  auto y                 = ctx.Builder()->Cast(y_fp16, "float32");
+  auto out_fp32 = ctx.Builder()->Conv2d(x, y, strides, paddings, dilations, groups, data_format, padding_algorithm);
+  auto out      = ctx.Builder()->Cast(out_fp32, "float16");
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
