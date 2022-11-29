@@ -79,13 +79,11 @@ TEST(DotMerger, rhs) {
     return;
   }
   NetBuilder builder("net_builder");
-  int m1 = 5, m2 = 5, k = 10, n = 2, axis = 0;
-  auto a        = builder.CreateInput(Float(16), {m1, k}, "A");
-  auto b        = builder.CreateInput(Float(16), {m2, k}, "B");
-  auto c        = builder.CreateInput(Float(16), {k, n}, "C");
-  auto d        = builder.Matmul(a, c);
-  auto e        = builder.Matmul(b, c);
-  auto f        = builder.Concat({d, e}, axis);
+  auto a        = builder.CreateInput(Float(16), {1, 64, 112, 112}, "A");
+  auto b        = builder.CreateInput(Float(16), {64, 64, 3, 3}, "B");
+  auto c        = builder.CreateInput(Float(16), {1, 64, 56, 56}, "C");
+  auto d        = builder.Conv2d(a, b, {2, 2}, {1, 1});
+  auto e        = builder.Add(c, d);
   auto p        = builder.Build();
   Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
@@ -93,8 +91,8 @@ TEST(DotMerger, rhs) {
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
   OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput", "GemmRewriter"}, {}},
-                        {{"MatmulToCublasCustomCallPass", "OpFusionPass", "FusionMergePass"},
-                         {"DotMerger", "MatmulToCublasCustomCallPass", "OpFusionPass", "FusionMergePass"}});
-  CompareResult(&p, target, input_ids, {f->id}, 0, std::move(passes), 123, true);
+                        {{"ConvToCudnnCustomCallPass", "OpFusionPass", "FusionMergePass"},
+                         {"ConvToCudnnCustomCallPass", "OpFusionPass", "FusionMergePass"}});
+  CompareResult(&p, target, input_ids, {e->id}, 0, std::move(passes), 123, true);
 }
 }  // namespace cinn::frontend::pass

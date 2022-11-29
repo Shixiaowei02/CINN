@@ -327,8 +327,10 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   bool is_float  = type_code == cinn_type_float;
   int bits       = args[0].operator cinn_buffer_t *()->type.bits;
   if (is_float && bits == 16) {
+    LOG(INFO) << "data_type = CUDNN_DATA_HALF";
     data_type = CUDNN_DATA_HALF;
   } else if (is_float && bits == 32) {
+    LOG(INFO) << "data_type = CUDNN_DATA_FLOAT";
     data_type = CUDNN_DATA_FLOAT;
   } else {
     LOG(FATAL) << "unsupported cudnn conv2d input data type: " << static_cast<int>(type_code) << ", bits = " << bits;
