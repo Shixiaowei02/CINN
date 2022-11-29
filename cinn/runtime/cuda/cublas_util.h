@@ -15,11 +15,49 @@
 #include <cublas_v2.h>
 
 #include "cinn/common/type.h"
+#include "cinn/runtime/cuda/test_util.h"
 #include "glog/logging.h"
 
 namespace cinn {
 namespace runtime {
 namespace cuda {
+
+template <typename T>
+void debug_str(int m, int n, int k, const T *A, const T *B, const T *C) {
+  {
+    int a_size = m * n;
+    util::Vector<T> tmpA(const_cast<T *>(A), a_size);
+    std::vector<T> tmpA_host = tmpA.to_host();
+    float sum{0};
+    for (auto i : tmpA_host) {
+      sum += static_cast<float>(i);
+    }
+    float average = sum / tmpA_host.size();
+    LOG(INFO) << "A average: " << average;
+  }
+  {
+    int b_size = n * k;
+    util::Vector<T> tmpB(const_cast<T *>(B), b_size);
+    std::vector<T> tmpB_host = tmpB.to_host();
+    float sum{0};
+    for (auto i : tmpB_host) {
+      sum += static_cast<float>(i);
+    }
+    float average = sum / tmpB_host.size();
+    LOG(INFO) << "B average: " << average;
+  }
+  {
+    int c_size = m * k;
+    util::Vector<T> tmpC(const_cast<T *>(C), c_size);
+    std::vector<T> tmpC_host = tmpC.to_host();
+    float sum{0};
+    for (auto i : tmpC_host) {
+      sum += static_cast<float>(i);
+    }
+    float average = sum / tmpC_host.size();
+    LOG(INFO) << "C average: " << average;
+  }
+}
 
 cublasStatus_t cublasGemm(cudaDataType_t dtype,
                           cublasHandle_t handle,
@@ -37,6 +75,7 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                           void *C,
                           int ldc) {
   if (dtype == CUDA_R_32F) {
+    LOG(INFO) << "cublasSgemm f32";
     return cublasSgemm(handle,
                        transa,
                        transb,
@@ -52,24 +91,33 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<float *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
+    LOG(INFO) << "cublasSgemm f16";
     common::float16 alpha_fp16{alpha};
     common::float16 beta_fp16{beta};
-    return cublasHgemm(handle,
-                       transa,
-                       transb,
-                       m,
-                       n,
-                       k,
-                       reinterpret_cast<const __half *>(&alpha_fp16),
-                       reinterpret_cast<const __half *>(A),
-                       lda,
-                       reinterpret_cast<const __half *>(B),
-                       ldb,
-                       reinterpret_cast<const __half *>(&beta_fp16),
-                       reinterpret_cast<__half *>(C),
-                       ldc);
+    auto ret = cublasHgemm(handle,
+                           transa,
+                           transb,
+                           m,
+                           n,
+                           k,
+                           reinterpret_cast<const __half *>(&alpha_fp16),
+                           reinterpret_cast<const __half *>(A),
+                           lda,
+                           reinterpret_cast<const __half *>(B),
+                           ldb,
+                           reinterpret_cast<const __half *>(&beta_fp16),
+                           reinterpret_cast<__half *>(C),
+                           ldc);
+    debug_str(m,
+              n,
+              k,
+              reinterpret_cast<const common::float16 *>(A),
+              reinterpret_cast<const common::float16 *>(B),
+              reinterpret_cast<const common::float16 *>(C));
+    return ret;
   }
   LOG(FATAL) << "Unsupported cublasGemm precision.";
+  return {};
 }
 
 cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
@@ -92,6 +140,7 @@ cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                         long long int strideC,
                                         int batchCount) {
   if (dtype == CUDA_R_32F) {
+    LOG(INFO) << "cublasHgemmStridedBatched FP32";
     return cublasSgemmStridedBatched(handle,
                                      transa,
                                      transb,
@@ -111,6 +160,7 @@ cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                      strideC,
                                      batchCount);
   } else if (dtype == CUDA_R_16F) {
+    LOG(INFO) << "cublasHgemmStridedBatched FP16";
     return cublasHgemmStridedBatched(handle,
                                      transa,
                                      transb,
