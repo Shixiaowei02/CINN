@@ -781,6 +781,7 @@ void Gemm(const cublasHandle_t &cublas,
           float *output_data,
           const std::vector<int> &output_shape,
           cudaStream_t stream) {
+  LOG(FATAL);
   int lhs_row    = lhs_shape[0];
   int lhs_col    = lhs_shape[1];
   int rhs_row    = rhs_shape[0];
@@ -853,6 +854,7 @@ void GemmStridedBatched(const cublasHandle_t &cublas,
   int64_t lhs_stride    = lhs_row * lhs_col;
   int64_t rhs_stride    = rhs_row * rhs_col;
   int64_t output_stride = output_row * output_col;
+  LOG(FATAL);
   cublasSgemmStridedBatched(cublas,
                             trans_a,
                             trans_b,
@@ -896,6 +898,7 @@ void cinn_gpu_cublas_mul(const std::vector<int> &attrs,
   float alpha = 1.f;
   float beta  = 0.f;
   // M,N * N,K
+  LOG(FATAL);
   cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, K, M, N, &alpha, y_data, K, x_data, N, &beta, out_data, K);
 }
 

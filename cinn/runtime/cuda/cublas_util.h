@@ -25,7 +25,7 @@ namespace cuda {
 template <typename T>
 void debug_str(int m, int n, int k, const T *A, const T *B, const T *C) {
   {
-    int a_size = m * n;
+    int a_size = m * k;
     util::Vector<T> tmpA(const_cast<T *>(A), a_size);
     std::vector<T> tmpA_host = tmpA.to_host();
     float sum{0};
@@ -47,7 +47,7 @@ void debug_str(int m, int n, int k, const T *A, const T *B, const T *C) {
     LOG(INFO) << "B average: " << average;
   }
   {
-    int c_size = m * k;
+    int c_size = m * n;
     util::Vector<T> tmpC(const_cast<T *>(C), c_size);
     std::vector<T> tmpC_host = tmpC.to_host();
     float sum{0};
