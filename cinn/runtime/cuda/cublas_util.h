@@ -91,6 +91,7 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<float *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
+    cudaDeviceSynchronize();
     LOG(INFO) << "cublasSgemm f16";
     common::float16 alpha_fp16{alpha};
     common::float16 beta_fp16{beta};
@@ -108,6 +109,7 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                            reinterpret_cast<const __half *>(&beta_fp16),
                            reinterpret_cast<__half *>(C),
                            ldc);
+    cudaDeviceSynchronize();
     debug_str(m,
               n,
               k,
