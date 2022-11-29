@@ -93,7 +93,7 @@ TEST(DotMerger, rhs) {
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
   OptimizeConfig passes({{"Decomposer", "RemoveIdentity", "TransposeFoldingInput", "GemmRewriter"}, {}},
-                        {{"OpFusionPass", "FusionMergePass"},
+                        {{"MatmulToCublasCustomCallPass", "OpFusionPass", "FusionMergePass"},
                          {"DotMerger", "MatmulToCublasCustomCallPass", "OpFusionPass", "FusionMergePass"}});
   CompareResult(&p, target, input_ids, {f->id}, 0, std::move(passes), 123, true);
 }
