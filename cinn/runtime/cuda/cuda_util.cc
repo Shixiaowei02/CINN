@@ -124,19 +124,19 @@ void cinn_call_cublas(void *v_args,
   int ldr = trans_op_r == CUBLAS_OP_N ? k : n;  // trans_o ? (trans_b ? n : k) : (trans_a ? n : k);
   int ldc = m;
 
-  void *lhs = trans_o ? A : B;
-  void *rhs = trans_o ? B : A;
+  auto *lhs = static_cast<uintptr_t *>(trans_o ? A : B);
+  auto *rhs = static_cast<uintptr_t *>(trans_o ? B : A);
 
   cudaDataType_t cuda_dtype;
   auto type_code = args[0].operator cinn_buffer_t *()->type.code;
   bool is_float  = type_code == cinn_type_float;
-  int bits       = args[0].operator cinn_buffer_t *()->type.bits;
-  if (is_float && bits == 16) {
+  int bytes      = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
+  if (is_float && bytes == sizeof(common::float16)) {
     cuda_dtype = CUDA_R_16F;
-  } else if (is_float && bits == 32) {
+  } else if (is_float && bytes == sizeof(float)) {
     cuda_dtype = CUDA_R_32F;
   } else {
-    LOG(FATAL) << "unsupported cublas data type: " << static_cast<int>(type_code) << ", bits = " << bits;
+    LOG(FATAL) << "unsupported cublas data type: " << static_cast<int>(type_code) << ", bytes = " << bytes;
   }
 
   if (a1 * a2 * b1 * b2 == 1) {
@@ -218,14 +218,14 @@ void cinn_call_cublas(void *v_args,
                                              n,
                                              k,
                                              &alpha,
-                                             lhs + idx * bstride_l,
+                                             reinterpret_cast<int8_t *>(lhs) + idx * bstride_l * bytes,
                                              ldl,
                                              stride_l,
-                                             rhs + idx * bstride_r,
+                                             reinterpret_cast<int8_t *>(rhs) + idx * bstride_r * bytes,
                                              ldr,
                                              stride_r,
                                              &beta,
-                                             C + idx * bstride_c,
+                                             reinterpret_cast<int8_t *>(C) + idx * bstride_c * bytes,
                                              ldc,
                                              m * n,
                                              std::max(l2, r2)));
