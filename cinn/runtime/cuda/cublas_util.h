@@ -28,46 +28,33 @@ cublasStatus_t cublasGemm(cudaDataType_t dtype,
                           int m,
                           int n,
                           int k,
-                          float alpha,
+                          float *alpha,
                           const void *A,
                           int lda,
                           const void *B,
                           int ldb,
-                          float beta,
+                          float *beta,
                           void *C,
                           int ldc) {
   if (dtype == CUDA_R_32F) {
+    LOG(INFO) << "cublasSgemm";
     return cublasSgemm(handle,
                        transa,
                        transb,
                        m,
                        n,
                        k,
-                       reinterpret_cast<const float *>(&alpha),
+                       reinterpret_cast<const float *>(alpha),
                        reinterpret_cast<const float *>(A),
                        lda,
                        reinterpret_cast<const float *>(B),
                        ldb,
-                       reinterpret_cast<const float *>(&beta),
+                       reinterpret_cast<const float *>(beta),
                        reinterpret_cast<float *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
-    return cublasHgemm(handle,
-                       transa,
-                       transb,
-                       m,
-                       n,
-                       k,
-                       reinterpret_cast<const __half *>(&alpha_fp16),
-                       reinterpret_cast<const __half *>(A),
-                       lda,
-                       reinterpret_cast<const __half *>(B),
-                       ldb,
-                       reinterpret_cast<const __half *>(&beta_fp16),
-                       reinterpret_cast<__half *>(C),
-                       ldc);
+    LOG(INFO) << "cublasHgemm";
+    return {};
   }
   LOG(FATAL) << "Unsupported cublasGemm precision.";
 }
@@ -79,58 +66,41 @@ cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                         int m,
                                         int n,
                                         int k,
-                                        float alpha,
+                                        float *alpha,
                                         const void *A,
                                         int lda,
                                         long long int strideA,
                                         const void *B,
                                         int ldb,
                                         long long int strideB,
-                                        float beta,
+                                        float *beta,
                                         void *C,
                                         int ldc,
                                         long long int strideC,
                                         int batchCount) {
   if (dtype == CUDA_R_32F) {
+    LOG(INFO) << "cublasSgemmStridedBatched";
     return cublasSgemmStridedBatched(handle,
                                      transa,
                                      transb,
                                      m,
                                      n,
                                      k,
-                                     reinterpret_cast<const float *>(&alpha),
+                                     reinterpret_cast<const float *>(alpha),
                                      reinterpret_cast<const float *>(A),
                                      lda,
                                      strideA,
                                      reinterpret_cast<const float *>(B),
                                      ldb,
                                      strideB,
-                                     reinterpret_cast<const float *>(&beta),
+                                     reinterpret_cast<const float *>(beta),
                                      reinterpret_cast<float *>(C),
                                      ldc,
                                      strideC,
                                      batchCount);
   } else if (dtype == CUDA_R_16F) {
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
-    return cublasHgemmStridedBatched(handle,
-                                     transa,
-                                     transb,
-                                     m,
-                                     n,
-                                     k,
-                                     reinterpret_cast<const __half *>(&alpha_fp16),
-                                     reinterpret_cast<const __half *>(A),
-                                     lda,
-                                     strideA,
-                                     reinterpret_cast<const __half *>(B),
-                                     ldb,
-                                     strideB,
-                                     reinterpret_cast<const __half *>(&beta_fp16),
-                                     reinterpret_cast<__half *>(C),
-                                     ldc,
-                                     strideC,
-                                     batchCount);
+    LOG(INFO) << "cublasHgemmStridedBatched";
+    return {};
   }
   LOG(FATAL) << "Unsupported cublasGemmStridedBatched precision.";
 }
