@@ -38,6 +38,7 @@ cc_test(test_intrinsic_ops SRCS intrinsic_ops_test.cc DEPS cinncore)
 cc_test(test_ir_verify SRCS ir_verify_test.cc DEPS cinncore)
 cc_test(test_schedule_desc SRCS schedule_desc_test.cc DEPS cinncore)
 cc_test(test_ir_compare SRCS ir_compare_test.cc DEPS cinncore)
+cc_test(test_ir_schedule1 SRCS ir_schedule_test.cc DEPS cinncore)
 
 foreach(header ${schedule_desc_proto_HDRS})
   set(core_proto_includes "${core_proto_includes};${header}" CACHE INTERNAL "")

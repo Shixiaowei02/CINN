@@ -1402,7 +1402,8 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(const std::shared_ptr<OpImpl>& impl
     }
   }
 
-  poly::StageMap stages        = C.back();
+  poly::StageMap stages = C.back();
+  LOG(INFO) << "GetFuncFromImpl stage size = " << stages->size();
   std::string func_name_prefix = "fn_";
   auto funcs = lang::LowerVec(func_name_prefix + node_id, stages, all_arg_tensors, {}, {}, nullptr, target, true);
 

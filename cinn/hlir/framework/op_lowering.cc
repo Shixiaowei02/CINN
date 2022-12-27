@@ -229,6 +229,7 @@ std::vector<ir::LoweredFunc> OpLowerer::IRLowerOp(IRComputeFunction compute,
   // do compute.
   VLOG(3) << "group->fused_sub_groups.size() is : " << group->fused_sub_groups.size();
   std::vector<Expr> ast_exprs;
+  LOG(INFO) << "--- 1 stages size = " << stages->size();
   if (group->fused_sub_groups.size() == 0) {
     ast_exprs = (this->*compute)(stages, arg_tensors, tensor_map, group, group, /*apply_impl_schedule = */ true);
   } else {
@@ -237,6 +238,7 @@ std::vector<ir::LoweredFunc> OpLowerer::IRLowerOp(IRComputeFunction compute,
       ast_exprs.insert(ast_exprs.end(), exprs.begin(), exprs.end());
     }
   }
+  LOG(INFO) << "--- 2 stages size = " << stages->size();
   ir::ModuleExpr mod_expr(ast_exprs);
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
@@ -305,6 +307,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerOp(ComputeFunction compute, Schedul
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   VLOG(3) << "Fused Sub-Graph Size Is : " << group->fused_sub_groups.size();
   // do compute.
+  LOG(INFO) << "--- 1 stages size = " << stages->size();
   if (group->fused_sub_groups.size() == 0) {
     (this->*compute)(stages, func_args, tensor_map, group, group);
   } else {
@@ -312,7 +315,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerOp(ComputeFunction compute, Schedul
       (this->*compute)(stages, func_args, tensor_map, group, sub_group);
     }
   }
-
+  LOG(INFO) << "--- 2 stages size = " << stages->size();
   VLOG(3) << "After Compute, Do Schedule!";
   // do schedule.
   if (group->fused_sub_groups.size() == 0) {
@@ -322,6 +325,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerOp(ComputeFunction compute, Schedul
       (this->*schedule)(stages, tensor_map, group, sub_group);
     }
   }
+  LOG(INFO) << "--- 3 stages size = " << stages->size();
   group->input_names.clear();
   for (auto& args : func_args) {
     // input node data name.
