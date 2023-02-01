@@ -678,6 +678,11 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(const ir::Tensor& A,
                                                    BlockReduceFunc block_reduce_func,
                                                    ir::Expr initial) {
   CHECK(!WithoutLastDimInReduce(A->shape, axes)) << "Can't find last axis in reduce!";
+  std::string axes_str;
+  for (auto i : axes) {
+    axes_str = axes_str + std::to_string(i) + ",";
+  }
+  LOG(INFO) << "axes = " << axes_str;
 
   int lane             = A->shape[axes.back()].as_int32();
   int index            = static_cast<int>(axes.size()) - 2;
@@ -820,6 +825,7 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(const ir::Tensor& A,
     results.push_back(res[0]);
   }
   std::reverse(results.begin(), results.end());
+  LOG(INFO) << "TwoStepBlockReduceInternal results size = " << results.size();
   return results;
 }
 

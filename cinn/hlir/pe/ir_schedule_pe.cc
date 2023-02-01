@@ -330,11 +330,12 @@ void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,
                                        ir::Tensor tmp_out,
                                        ir::Tensor out,
                                        const common::Target &target) {
-  VLOG(3) << "Before IRCudaScheduleBlockReduceInternal : " << ir_sch.GetModule().GetExprs().at(0);
+  LOG(INFO) << "Before IRCudaScheduleBlockReduceInternal : " << ir_sch.GetModule().GetExprs().at(0);
   for (int idx = 0; idx < static_cast<int>(tmp_out->shape.size()) - 2; ++idx) {
     for (auto &tensor : {tmp_out, out}) {
+      LOG(INFO) << "loop size: " << tensor->name << " = " << ir_sch.GetLoops(tensor->name).size();
       auto loops = ir_sch.GetLoops(tensor->name);
-      CHECK_GE(loops.size(), 2U);
+      CHECK_GE(loops.size(), 2U) << tensor->name << " has illegal loop size.";
       ir_sch.Fuse({loops[0], loops[1]});
     }
   }

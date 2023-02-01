@@ -557,7 +557,9 @@ std::vector<Expr> OpLowerer::IRReduceCompute(poly::StageMap& stages,
     auto impl =
         OpStrategy::SelectImpl(cinn_strategy[node->op()](node->attrs, tensor_inputs, out_types, out_shapes, target_));
     // do compute
+    LOG(INFO) << "-- compute start: " << cinn_inputs.size();
     common::CINNValuePack pack = impl->fcompute(common::CINNValuePack{cinn_inputs});
+    LOG(INFO) << "-- compute end: " << pack.size();
 
     CHECK_GE(pack.size(), 2UL);
     CHECK_LE(pack.size(), 5UL);
@@ -589,6 +591,7 @@ std::vector<Expr> OpLowerer::IRReduceCompute(poly::StageMap& stages,
         schedule_inputs.push_back(common::CINNValue(f->body));
       }
       // do ast tree schedule
+      LOG(INFO) << "-- impl->fschedule start: " << schedule_inputs.size();
       common::CINNValuePack expr_pack = impl->fschedule(common::CINNValuePack{schedule_inputs});
       // ast tree after schedule.
       Expr ast_expr = expr_pack[0];
@@ -1486,6 +1489,7 @@ void OpLowerer::ReduceCompute(poly::StageMap& stages,
         OpStrategy::SelectImpl(cinn_strategy[node->op()](node->attrs, tensor_inputs, out_types, out_shapes, target_));
     // do compute
     common::CINNValuePack value_pack = impl->fcompute(common::CINNValuePack{cinn_inputs});
+    LOG(INFO) << "value_pack size = " << value_pack.size();
 
     CHECK_GE(value_pack.size(), 2UL);
     CHECK_LE(value_pack.size(), 5UL);

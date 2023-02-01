@@ -1392,6 +1392,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(const std::shared_ptr<OpImpl>& impl
                                              const std::string& node_id,
                                              const Target& target) {
   // 1.Call Op's Compute function, using the default stages and LowerVec to get IR tree.
+  LOG(INFO) << "impl->fcompute";
   common::CINNValuePack C = impl->fcompute(cinn_inputs);
 
   // 2. Collect tensors and arguments
@@ -1418,6 +1419,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(const std::shared_ptr<OpImpl>& impl
   }
 
   // 3. Call Op's Schedule function, optimizing the IR tree by new IR schedule
+  LOG(INFO) << "impl->fschedule";
   common::CINNValuePack expr_pack = impl->fschedule(common::CINNValuePack{schedule_inputs});
 
   // 4. Optimize the LoweredFunc

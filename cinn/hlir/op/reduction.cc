@@ -125,7 +125,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(const framework::NodeAttr &attrs,
     if (target == common::DefaultNVGPUTarget()) {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         VLOG(3) << "Do Two Step Block Reduce Compute!";
-        auto res    = gpu_reduce_with_last_axis_func(x, reduce_axes, keep_dim, tensor_name);
+        auto res = gpu_reduce_with_last_axis_func(x, reduce_axes, keep_dim, tensor_name);
+        LOG(INFO) << "gpu_reduce_with_last_axis_func res size = " << res.size();
         auto stages = CreateStages(res);
 
         std::vector<CINNValue> cinn_values;
@@ -133,10 +134,12 @@ std::shared_ptr<OpStrategy> StrategyForReduce(const framework::NodeAttr &attrs,
           cinn_values.emplace_back(t);
         }
         cinn_values.emplace_back(stages);
+        LOG(INFO) << "cinn_values size = " << cinn_values.size();
         *ret = CINNValuePack{cinn_values};
       } else {
         VLOG(3) << "Do Block Shuffle Reduce Compute!";
-        auto res    = gpu_reduce_without_last_axis_func(x, reduce_axes, keep_dim, tensor_name);
+        auto res = gpu_reduce_without_last_axis_func(x, reduce_axes, keep_dim, tensor_name);
+        LOG(INFO) << "gpu_reduce_without_last_axis_func res size = " << res.size();
         auto stages = CreateStages(res);
 
         std::vector<CINNValue> cinn_values;
@@ -159,6 +162,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(const framework::NodeAttr &attrs,
   framework::CINNSchedule reduction_schedule([=](lang::Args args, lang::RetValue *ret) {
     CHECK(!args.empty()) << "The input argument of " << op_name << " schedule is empty! Please check.";
     CINNValuePack arg_pack = args[0];
+    LOG(INFO) << "reduction_schedule : " << arg_pack.size();
 
     if (FLAGS_cinn_ir_schedule) {
       CHECK_GE(arg_pack.size(), 2UL);
@@ -182,11 +186,13 @@ std::shared_ptr<OpStrategy> StrategyForReduce(const framework::NodeAttr &attrs,
       if (target.arch == Target::Arch::NVGPU) {
         if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
           if (arg_pack.size() == 4) {
+            // reference to OpLowerer::IRReduceCompute
+            // arg_pack type: out(tensor), tmp_out(tensor), lower_func, lower_func
             CHECK_EQ(vec_tensor.size(), 2);
             Expr out     = vec_tensor[0];
             Expr tmp_out = vec_tensor[1];
 
-            VLOG(3) << "Do IRCudaScheduleBlockReduceInternal Schedule!";
+            LOG(INFO) << "Do IRCudaScheduleBlockReduceInternal Schedule!";
             pe::IRCudaScheduleBlockReduceInternal(ir_sch, tmp_out.as_tensor_ref(), out.as_tensor_ref(), target);
 
             std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
