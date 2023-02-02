@@ -813,13 +813,13 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(const ir::Tensor& A,
     }
   }
   if (first_axes.size()) {
-    VLOG(3) << "Do Reduce Internal!";
+    LOG(INFO) << "Do Reduce Internal!";
     results.push_back(
         reduce_func(results.size() ? results.back() : A, first_axes, keep_dim_first, output_name + "_internal"));
     results.back()->WithBuffer("local");
   }
   if (second_axes.size()) {
-    VLOG(3) << "Do Block Reduce!";
+    LOG(INFO) << "Do Block Reduce!";
     auto res = block_reduce_func(results.size() ? results.back() : A, second_axes, keep_dim_second, output_name);
     results.push_back(res[1]);
     results.push_back(res[0]);
