@@ -1015,7 +1015,7 @@ class NetBuilder {
    * @return The values and indices. The value data type is the same as the input x. The
    * indices data type is int64.
    */
-  std::vector<Variable> TopK(const Variable& x, int k, int axis = -1, bool largest = true, bool sorted = true);
+  std::vector<Variable> TopK(const Variable& x, int k);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(NetBuilder);

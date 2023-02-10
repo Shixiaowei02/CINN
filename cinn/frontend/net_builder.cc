@@ -676,9 +676,7 @@ Variable NetBuilder::Cholesky(const Variable& x, bool upper) {
   return CustomInstr("cholesky", {x}, {{"upper", upper}}).front();
 }
 
-std::vector<Variable> NetBuilder::TopK(const Variable& x, int k, int axis, bool largest, bool sorted) {
-  return CustomInstr("topk", {x}, {{"k", k}, {"axis", axis}, {"largest", largest}, {"sorted", sorted}});
-}
+std::vector<Variable> NetBuilder::TopK(const Variable& x, int k) { return CustomInstr("topk", {x}, {{"k", k}}); }
 
 }  // namespace frontend
 }  // namespace cinn
