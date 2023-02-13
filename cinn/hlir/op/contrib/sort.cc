@@ -327,6 +327,89 @@ std::vector<Type> InferDtypeForArgSort(const std::vector<Type> &inputs_type, con
   return {Int(32)};
 }
 
+std::vector<ir::Tensor> TopK(const ir::Tensor &A,
+                             const common::Target &target,
+                             poly::StageMap stages,
+                             const int &axis,
+                             const bool &is_ascend,
+                             const std::string &name,
+                             int k) {
+  std::string find_func_name;
+  std::string index_func_name;
+  if (target.arch == common::Target::Arch::NVGPU) {
+    index_func_name.assign("cinn_cuda_");
+    find_func_name.assign("cinn_cuda_find_int_nd");
+  } else if (target.arch == common::Target::Arch::X86) {
+    index_func_name.assign("cinn_host_");
+    find_func_name.assign("cinn_host_find_int_nd");
+  } else {
+    LOG(FATAL) << "ArgSort only supports X86 and NVGPU ! Please Check.\n";
+  }
+  if (is_ascend) {
+    index_func_name.append("lt_num_float");
+  } else {
+    index_func_name.append("gt_num_float");
+  }
+  int pos_axis = axis;
+  if (pos_axis < 0) {
+    pos_axis += A->shape.size();
+  }
+  std::vector<cinn::ir::Expr> shape;
+  for (int i = 0; i < A->shape.size(); ++i) {
+    if (i == pos_axis) {
+      shape.emplace_back(Expr{k});
+    } else {
+      shape.emplace_back(shape[i]);
+    }
+  }
+  auto positions = Compute(
+      shape,
+      [=](const std::vector<Expr> &indices) {
+        Expr offset(0);
+        Expr stride(1);
+        for (int i = 0; i < indices.size(); i++) {
+          if (i < pos_axis) {
+            offset = offset * shape[i] + indices[i];
+          } else if (i == pos_axis) {
+            offset = offset * shape[i];
+          } else {
+            offset = offset * shape[i] + indices[i];
+            stride = stride * shape[i];
+          }
+        }
+        offset            = common::AutoSimplify(offset);
+        stride            = common::AutoSimplify(stride);
+        auto A_shape_axis = A->shape[pos_axis];
+        return lang::CallExtern(index_func_name, {A, A_shape_axis, A(indices), offset, stride});
+      },
+      name + "_temp");
+  auto res = Compute(
+      shape,
+      [=](const std::vector<Expr> &indices) {
+        Expr offset(0);
+        Expr stride(1);
+        for (int i = 0; i < indices.size(); i++) {
+          if (i < pos_axis) {
+            offset = offset * shape[i] + indices[i];
+          } else if (i == pos_axis) {
+            offset = offset * shape[i];
+          } else {
+            offset = offset * shape[i] + indices[i];
+            stride = stride * shape[i];
+          }
+        }
+        offset = common::AutoSimplify(offset);
+        stride = common::AutoSimplify(stride);
+
+        auto A_shape_axis = A->shape[pos_axis];
+        auto idx = lang::CallExtern(find_func_name, {positions, A_shape_axis, indices[pos_axis], offset, stride});
+        return idx;
+      },
+      name);
+  stages->InsertLazily(positions);
+  return {res, positions};
+}
+
 std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr &attrs,
                                                        const std::vector<ir::Tensor> &inputs,
                                                        const std::vector<Type> &out_type,
@@ -335,6 +418,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
   auto attr_store = attrs.attr_store;
   int axis        = -1;
   bool is_ascend  = true;
+  auto it         = attr_store.find("k");
+  CHECK(it != attr_store.end());
+  int k = absl::get<int>(it->second);
 
   framework::CINNCompute topk_compute([=](lang::Args args, lang::RetValue *ret) {
     CHECK(!args.empty()) << "The input arguments of TopK compute is empty! Please check.\n";
@@ -353,10 +439,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
       CHECK(pack_args[1].is_string());
       tensor_name = pack_args[1].operator std::string();
     }
-    ir::Tensor out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    std::vector<ir::Tensor> out = TopK(tensor_A, target, stages, axis, is_ascend, tensor_name, k);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(out));
+    stages->InsertLazily(out[0]);
+    stages->InsertLazily(out[1]);
+    res.insert(res.end(), {CINNValue(out[0]), CINNValue(out[1])});
     CHECK(!out_type.empty()) << "Output type of TopK is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
@@ -397,7 +484,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(topk_compute, topk_schedule, "strategy.topk.x86", 1);
+  strategy->AddImpl(topk_compute, topk_schedule, "strategy.topk", 1);
   return strategy;
 }
 

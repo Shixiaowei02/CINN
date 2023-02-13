@@ -39,7 +39,7 @@ class TestTopKOp(OpTest):
         }
 
     def build_paddle_program(self, target):
-        table = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
+        x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
         out = paddle.topk(x, 10)
 
         self.paddle_outputs = [out[0], out[1]]
