@@ -336,10 +336,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
   int axis        = -1;
   bool is_ascend  = true;
 
-  framework::CINNCompute argsort_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input arguments of ArgSort compute is empty! Please check.\n";
+  framework::CINNCompute topk_compute([=](lang::Args args, lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input arguments of TopK compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 1U) << "At least 1 input tensors for ArgSort compute\n";
+    CHECK_GE(pack_args.size(), 1U) << "At least 1 input tensors for TopK compute\n";
     Expr A = pack_args[0];
     CHECK(A.as_tensor());
     CHECK(!output_shapes.empty());
@@ -347,7 +347,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
     auto stages   = CreateStages({tensor_A});
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    auto tensor_name = UniqName("ArgSort_out");
+    auto tensor_name = UniqName("TopK_out");
     if (FLAGS_cinn_ir_schedule) {
       CHECK_EQ(pack_args.size(), 2U);
       CHECK(pack_args[1].is_string());
@@ -357,14 +357,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
     std::vector<CINNValue> res;
     stages->InsertLazily(out);
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty()) << "Output type of ArgSort is empty! Please check.\n";
+    CHECK(!out_type.empty()) << "Output type of TopK is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule argsort_schedule([=](lang::Args args, lang::RetValue *ret) {
+  framework::CINNSchedule topk_schedule([=](lang::Args args, lang::RetValue *ret) {
     if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of argsort_schedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of topk_schedule is empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
@@ -388,7 +388,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
       std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
     } else {
-      CHECK(!args.empty()) << "The input argument of argsort_schedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of topk_schedule is empty! Please check.\n";
       CINNValuePack arg_pack = args[0];
       Expr out               = arg_pack[0];
       CHECK(out.as_tensor());
@@ -397,7 +397,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(argsort_compute, argsort_schedule, "strategy.argsort.x86", 1);
+  strategy->AddImpl(topk_compute, topk_schedule, "strategy.topk.x86", 1);
   return strategy;
 }
 
