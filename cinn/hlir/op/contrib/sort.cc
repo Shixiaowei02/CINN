@@ -327,6 +327,97 @@ std::vector<Type> InferDtypeForArgSort(const std::vector<Type> &inputs_type, con
   return {Int(32)};
 }
 
+std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr &attrs,
+                                                       const std::vector<ir::Tensor> &inputs,
+                                                       const std::vector<Type> &out_type,
+                                                       const std::vector<std::vector<int>> &output_shapes,
+                                                       const Target &target) {
+  auto attr_store = attrs.attr_store;
+  int axis        = -1;
+  bool is_ascend  = true;
+
+  framework::CINNCompute argsort_compute([=](lang::Args args, lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input arguments of ArgSort compute is empty! Please check.\n";
+    CINNValuePack pack_args = args[0];
+    CHECK_GE(pack_args.size(), 1U) << "At least 1 input tensors for ArgSort compute\n";
+    Expr A = pack_args[0];
+    CHECK(A.as_tensor());
+    CHECK(!output_shapes.empty());
+    auto tensor_A = A.as_tensor_ref();
+    auto stages   = CreateStages({tensor_A});
+    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    auto tensor_name = UniqName("ArgSort_out");
+    if (FLAGS_cinn_ir_schedule) {
+      CHECK_EQ(pack_args.size(), 2U);
+      CHECK(pack_args[1].is_string());
+      tensor_name = pack_args[1].operator std::string();
+    }
+    ir::Tensor out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    std::vector<CINNValue> res;
+    stages->InsertLazily(out);
+    res.push_back(CINNValue(out));
+    CHECK(!out_type.empty()) << "Output type of ArgSort is empty! Please check.\n";
+    res.push_back(CINNValue(stages));
+    *ret = CINNValuePack{res};
+  });
+
+  framework::CINNSchedule argsort_schedule([=](lang::Args args, lang::RetValue *ret) {
+    if (FLAGS_cinn_ir_schedule) {
+      CHECK(!args.empty()) << "The input argument of argsort_schedule is empty! Please check.\n";
+      common::CINNValuePack arg_pack = args[0];
+      std::vector<Expr> vec_ast;
+      for (int i = 0; i < arg_pack.size(); i++) {
+        if (arg_pack[i].is_expr()) {
+          Expr temp = arg_pack[i];
+          vec_ast.emplace_back(temp);
+        }
+      }
+      CHECK(!vec_ast.empty());
+      ir::ModuleExpr mod_expr(vec_ast);
+      ir::IRSchedule ir_sch(mod_expr);
+      ir_sch.MergeExprs();
+      long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
+      if (prod_size > 1) {
+        if (target.arch == Target::Arch::NVGPU) {
+          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+        } else if (target.arch == Target::Arch::X86) {
+          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
+        }
+      }
+      std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      *ret = common::CINNValuePack{res};
+    } else {
+      CHECK(!args.empty()) << "The input argument of argsort_schedule is empty! Please check.\n";
+      CINNValuePack arg_pack = args[0];
+      Expr out               = arg_pack[0];
+      CHECK(out.as_tensor());
+      *ret = arg_pack;
+    }
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(argsort_compute, argsort_schedule, "strategy.argsort.x86", 1);
+  return strategy;
+}
+
+std::vector<std::vector<int>> InferShapeForTopK(const std::vector<std::vector<int>> &inputs_shape,
+                                                const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_shape.size(), 1UL) << "The input's shape size should be 1! Please check again.";
+  auto res  = inputs_shape;
+  auto k_it = attrs.find("k");
+  CHECK(k_it != attrs.end()) << "The attr k of topk does not exist.";
+  int k         = absl::get<int>(k_it->second);
+  res[0].back() = k;
+  return res;
+}
+
+std::vector<Type> InferDtypeForTopK(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_type.size(), 1UL) << "The input's type size should be 1! Please check again.";
+  std::vector<Type> res{inputs_type[0]};
+  return res;
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -348,6 +439,15 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForArgSort)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSort))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForArgSort))
+      .set_support_level(4);
+
+  CINN_REGISTER_OP(topk)
+      .describe("Return values and indices of the k largest at the optional axis.")
+      .set_num_inputs(1)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForTopK)
+      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
+      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
       .set_support_level(4);
 
   return true;
