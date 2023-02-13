@@ -28,7 +28,7 @@ void TopKOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   auto indices_name = op_desc.Output("Indices").front();
 
   CHECK(op_desc.HasAttr("k"));
-  int k = op_desc.GetAttr<int>(op_desc, "k");
+  int k = op_desc.GetAttr<int>("k");
 
   auto x        = ctx.GetVar(x_name);
   auto outs     = ctx.Builder()->TopK(x, k);

@@ -441,7 +441,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForArgSort))
       .set_support_level(4);
 
-  CINN_REGISTER_OP(topk)
+  CINN_REGISTER_OP(top_k)
       .describe("Return values and indices of the k largest at the optional axis.")
       .set_num_inputs(1)
       .set_num_outputs(1)
