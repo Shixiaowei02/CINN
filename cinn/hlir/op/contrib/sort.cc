@@ -357,9 +357,9 @@ std::vector<ir::Tensor> TopK(const ir::Tensor &A,
   std::vector<cinn::ir::Expr> shape;
   for (int i = 0; i < A->shape.size(); ++i) {
     if (i == pos_axis) {
-      shape.emplace_back(Expr{k});
+      shape.emplace_back(Expr(k));
     } else {
-      shape.emplace_back(shape[i]);
+      shape.emplace_back(A->shape[i]);
     }
   }
   auto positions = Compute(
@@ -435,9 +435,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     auto tensor_name = UniqName("TopK_out");
     if (FLAGS_cinn_ir_schedule) {
-      CHECK_EQ(pack_args.size(), 2U);
+      // pack_args: x, res, pos
+      CHECK_EQ(pack_args.size(), 3U);
       CHECK(pack_args[1].is_string());
-      tensor_name = pack_args[1].operator std::string();
+      CHECK(pack_args[2].is_string());
     }
     std::vector<ir::Tensor> out = TopK(tensor_A, target, stages, axis, is_ascend, tensor_name, k);
     std::vector<CINNValue> res;
@@ -537,6 +538,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForTopK)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   return true;
