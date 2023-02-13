@@ -362,7 +362,7 @@ std::vector<ir::Tensor> TopK(const ir::Tensor &A,
       shape.emplace_back(A->shape[i]);
     }
   }
-  auto positions = Compute(
+  auto tmp = Compute(
       shape,
       [=](const std::vector<Expr> &indices) {
         Expr offset(0);
@@ -380,10 +380,11 @@ std::vector<ir::Tensor> TopK(const ir::Tensor &A,
         offset            = common::AutoSimplify(offset);
         stride            = common::AutoSimplify(stride);
         auto A_shape_axis = A->shape[pos_axis];
+        // 有多少个比 A(indices) 小的
         return lang::CallExtern(index_func_name, {A, A_shape_axis, A(indices), offset, stride});
       },
       name + "_temp");
-  auto res = Compute(
+  auto sort_index = Compute(
       shape,
       [=](const std::vector<Expr> &indices) {
         Expr offset(0);
@@ -402,12 +403,19 @@ std::vector<ir::Tensor> TopK(const ir::Tensor &A,
         stride = common::AutoSimplify(stride);
 
         auto A_shape_axis = A->shape[pos_axis];
-        auto idx = lang::CallExtern(find_func_name, {positions, A_shape_axis, indices[pos_axis], offset, stride});
+        auto idx          = lang::CallExtern(find_func_name, {tmp, A_shape_axis, indices[pos_axis], offset, stride});
         return idx;
       },
+      name + "_index");
+  auto res = Compute(
+      shape,
+      [=](const std::vector<Expr> &indices) {
+        std::vector<Expr> A_indices(indices);
+        A_indices[pos_axis] = sort_index(indices);
+        return A(A_indices);
+      },
       name);
-  stages->InsertLazily(positions);
-  return {res, positions};
+  return {res, sort_index, tmp};
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr &attrs,
@@ -444,7 +452,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
     std::vector<CINNValue> res;
     stages->InsertLazily(out[0]);
     stages->InsertLazily(out[1]);
-    res.insert(res.end(), {CINNValue(out[0]), CINNValue(out[1])});
+    stages->InsertLazily(out[2]);
+    res.insert(res.end(), {CINNValue(out[0]), CINNValue(out[1]), CINNValue(out[2])});
     CHECK(!out_type.empty()) << "Output type of TopK is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};

@@ -37,7 +37,7 @@ class TestTopKOp(OpTest):
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.inputs["x"], stop_gradient=False)
-        out = paddle.topk(x, 10)
+        out = paddle.topk(x, 5)
 
         self.paddle_outputs = [out[0], out[1]]
 
@@ -46,7 +46,7 @@ class TestTopKOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("top_k")
         x = builder.create_input(Float(32), self.inputs["x"].shape, "x")
-        out = builder.top_k(x, 10)
+        out = builder.top_k(x, 5)
         prog = builder.build()
         forward_res = self.get_cinn_output(
             prog, target, [x], [self.inputs["x"]], [out[0], out[1]])
@@ -56,6 +56,10 @@ class TestTopKOp(OpTest):
     def test_check_results(self):
         self.build_paddle_program(self.target)
         self.build_cinn_program(self.target)
+        print(self.paddle_outputs[0])
+        print(self.paddle_outputs[1])
+        print(self.cinn_outputs[0])
+        print(self.cinn_outputs[1])
         self.check_results(self.paddle_outputs, self.cinn_outputs, 1e-5, False,
                            False)
 
