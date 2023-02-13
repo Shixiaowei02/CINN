@@ -45,7 +45,7 @@ void TopKOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
 }  // namespace frontend
 }  // namespace cinn
 
-CINN_REGISTER_HELPER(topk) {
+CINN_REGISTER_HELPER(paddle_top_k) {
   CINN_REGISTER_OP_MAPPER(topk, cinn::frontend::paddle_mappers::TopKOpMapper)
   return true;
 }
