@@ -32,10 +32,7 @@ class TestTopKOp(OpTest):
 
     def init_case(self):
         self.inputs = {
-            "x": np.random.random([
-                10,
-                20,
-            ]).astype("float32")
+            "x": np.resize(np.arange(100, dtype=np.float32), [10, 10])
         }
 
     def build_paddle_program(self, target):
