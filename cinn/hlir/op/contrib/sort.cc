@@ -477,8 +477,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForTopK(const framework::NodeAttr
     } else {
       CHECK(!args.empty()) << "The input argument of topk_schedule is empty! Please check.\n";
       CINNValuePack arg_pack = args[0];
-      Expr out               = arg_pack[0];
-      CHECK(out.as_tensor());
+      Expr res               = arg_pack[0];
+      Expr pos               = arg_pack[1];
+      CHECK(res.as_tensor());
+      CHECK(pos.as_tensor());
       *ret = arg_pack;
     }
   });
@@ -496,12 +498,12 @@ std::vector<std::vector<int>> InferShapeForTopK(const std::vector<std::vector<in
   CHECK(k_it != attrs.end()) << "The attr k of topk does not exist.";
   int k         = absl::get<int>(k_it->second);
   res[0].back() = k;
-  return res;
+  return {res[0], res[0]};
 }
 
 std::vector<Type> InferDtypeForTopK(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK_EQ(inputs_type.size(), 1UL) << "The input's type size should be 1! Please check again.";
-  std::vector<Type> res{inputs_type[0]};
+  std::vector<Type> res{inputs_type[0], Int(32)};
   return res;
 }
 
