@@ -685,5 +685,7 @@ Variable NetBuilder::Norm(const Variable& x, int axis, float epsilon) {
   return instr.GetOutput(0);
 }
 
+std::vector<Variable> NetBuilder::TopK(const Variable& x, int k) { return CustomInstr("top_k", {x}, {{"k", k}}); }
+
 }  // namespace frontend
 }  // namespace cinn
