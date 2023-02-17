@@ -1018,12 +1018,10 @@ class NetBuilder {
    * x.ndim. when axis < 0, it works the same way as axis + R. Default is -1.
    * @param largest largest is a flag, if set to true, algorithm will sort by descending
    * order, otherwise sort by ascending order. Default is True.
-   * @param sorted controls whether to return the elements in sorted order, default value
-   * is True. In gpu device, it always return the sorted value.
    * @return The values and indices. The value data type is the same as the input x. The
    * indices data type is int64.
    */
-  std::vector<Variable> TopK(const Variable& x, int k);
+  std::vector<Variable> TopK(const Variable& x, int k, int axis, bool largest);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(NetBuilder);

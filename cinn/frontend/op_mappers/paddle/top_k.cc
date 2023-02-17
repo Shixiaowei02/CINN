@@ -29,17 +29,13 @@ void TopKOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   auto x            = ctx.GetVar(x_name);
 
   CHECK(op_desc.HasAttr("k"));
-  auto k = utils::GetAttrOrDefault<int>(op_desc, "k");
+  auto k    = utils::GetAttrOrDefault<int>(op_desc, "k");
+  auto outs = ctx.Builder()->TopK(x, k, -1, true);
 
-  auto sort_tmp    = ctx.Builder()->Sort(x, -1, false);
-  auto sort_out    = ctx.Builder()->Slice(sort_tmp, {-1}, {0}, {k});
-  auto argsort_tmp = ctx.Builder()->ArgSort(x, -1, false);
-  auto argsort_out = ctx.Builder()->Slice(argsort_tmp, {-1}, {0}, {k});
-
-  ctx.AddVar(out_name, sort_out);
-  ctx.AddVarModelToProgram(out_name, sort_out->id);
-  ctx.AddVar(indices_name, argsort_out);
-  ctx.AddVarModelToProgram(indices_name, argsort_out->id);
+  ctx.AddVar(out_name, outs[0]);
+  ctx.AddVarModelToProgram(out_name, outs[0]->id);
+  ctx.AddVar(indices_name, outs[1]);
+  ctx.AddVarModelToProgram(indices_name, outs[1]->id);
 }
 
 }  // namespace paddle_mappers
@@ -47,6 +43,6 @@ void TopKOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_top_k) {
-  CINN_REGISTER_OP_MAPPER(topk, cinn::frontend::paddle_mappers::TopKOpMapper)
+  CINN_REGISTER_OP_MAPPER(top_k, cinn::frontend::paddle_mappers::TopKOpMapper)
   return true;
 }
