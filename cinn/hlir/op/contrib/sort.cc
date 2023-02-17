@@ -373,6 +373,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_num_outputs(2)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   return true;

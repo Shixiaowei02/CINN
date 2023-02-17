@@ -28,11 +28,13 @@ void top_k(const Instruction& instr, const DecomposerContext& context) {
 
   auto* builder = context.builder();
   int k         = instr.GetAttrs<int>("k");
+  CHECK_GT(k, 0) << "The attribute k must be greater than 0.";
+  int axis = x->shape.size() - 1;
 
-  auto sort_tmp    = builder->Sort(x, -1, false);
-  auto sort_out    = builder->Slice(sort_tmp, {-1}, {0}, {k});
-  auto argsort_tmp = builder->ArgSort(x, -1, false);
-  auto argsort_out = builder->Slice(argsort_tmp, {-1}, {0}, {k});
+  auto sort_tmp    = builder->Sort(x, axis, false);
+  auto sort_out    = builder->Slice(sort_tmp, {axis}, {0}, {k});
+  auto argsort_tmp = builder->ArgSort(x, axis, false);
+  auto argsort_out = builder->Slice(argsort_tmp, {axis}, {0}, {k});
 
   // map the the output of decomposed operator to the original.
   context.MapOutToOrigin(sort_out, output);
@@ -43,7 +45,7 @@ void top_k(const Instruction& instr, const DecomposerContext& context) {
 }  // namespace frontend
 }  // namespace cinn
 
-CINN_REGISTER_HELPER(top_k_decomposers) {
+CINN_REGISTER_HELPER(top_k_decomposer) {
   CINN_DECOMPOSER_REGISTER(top_k, cinn::frontend::decomposer::top_k);
   return true;
 }
