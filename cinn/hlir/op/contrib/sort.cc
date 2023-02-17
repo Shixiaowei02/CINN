@@ -327,6 +327,23 @@ std::vector<Type> InferDtypeForArgSort(const std::vector<Type> &inputs_type, con
   return {Int(32)};
 }
 
+std::vector<std::vector<int>> InferShapeForTopK(const std::vector<std::vector<int>> &inputs_shape,
+                                                const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_shape.size(), 1UL) << "The input's shape size should be 1! Please check again.";
+  auto res  = inputs_shape;
+  auto k_it = attrs.find("k");
+  CHECK(k_it != attrs.end()) << "The attr k of topk does not exist.";
+  int k         = absl::get<int>(k_it->second);
+  res[0].back() = k;
+  return {res[0], res[0]};
+}
+
+std::vector<Type> InferDtypeForTopK(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
+  CHECK_EQ(inputs_type.size(), 1UL) << "The input's type size should be 1! Please check again.";
+  std::vector<Type> res{inputs_type[0], Int(32)};
+  return res;
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -348,6 +365,14 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForArgSort)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSort))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForArgSort))
+      .set_support_level(4);
+
+  CINN_REGISTER_OP(top_k)
+      .describe("Find values and indices of the k largest entries for the last dimension..")
+      .set_num_inputs(1)
+      .set_num_outputs(2)
+      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
+      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
       .set_support_level(4);
 
   return true;
