@@ -484,6 +484,9 @@ std::vector<Expr> OpLowerer::IRElementwiseCompute(poly::StageMap& stages,
     tensor_map[node_data->id()] = expr.as_tensor_ref();
 
     auto func = lang::LowerVec("fn_" + node->id(), node_stages, tensor_inputs, {}, {}, nullptr, this->target_, true);
+    for (auto f : func) {
+      LOG(INFO) << "f->name = " << f->name;
+    }
     CHECK_EQ(func.size(), 1);
 
     if (apply_impl_schedule) {

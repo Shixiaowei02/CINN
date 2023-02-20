@@ -356,6 +356,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForSort)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSort))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForSort))
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
 
   CINN_REGISTER_OP(argsort)
@@ -365,6 +366,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForArgSort)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSort))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForArgSort))
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
 
   CINN_REGISTER_OP(top_k)
@@ -373,7 +375,7 @@ CINN_REGISTER_HELPER(sort_ops) {
       .set_num_outputs(2)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForTopK))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForTopK))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
 
   return true;
