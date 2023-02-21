@@ -143,12 +143,12 @@ ir::Tensor Sort(const ir::Tensor &A,
   return res;
 }
 
-std::vector<ir::Tensor> Sort2(const ir::Tensor &A,
-                              const common::Target &target,
-                              poly::StageMap stages,
-                              const int &axis,
-                              const bool &is_ascend,
-                              const std::string &name) {
+std::vector<ir::Tensor> ArgSort2(const ir::Tensor &A,
+                                 const common::Target &target,
+                                 poly::StageMap stages,
+                                 const int &axis,
+                                 const bool &is_ascend,
+                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
   if (target.arch == common::Target::Arch::NVGPU) {
@@ -189,8 +189,8 @@ std::vector<ir::Tensor> Sort2(const ir::Tensor &A,
         auto A_shape_axis = A->shape[pos_axis];
         return lang::CallExtern(index_func_name, {A, A_shape_axis, A(indices), offset, stride});
       },
-      name + "_positions");
-  auto sort_index = Compute(
+      name + "_temp");
+  auto res = Compute(
       A->shape,
       [=](const std::vector<Expr> &indices) {
         Expr offset(0);
@@ -212,18 +212,32 @@ std::vector<ir::Tensor> Sort2(const ir::Tensor &A,
         auto idx = lang::CallExtern(find_func_name, {positions, A_shape_axis, indices[pos_axis], offset, stride});
         return idx;
       },
-      name + "_sort_index");
+      name);
   stages->InsertLazily(positions);
-  auto res = Compute(
+  return {res, positions};
+}
+
+std::vector<ir::Tensor> Sort2(const ir::Tensor &A,
+                              const common::Target &target,
+                              poly::StageMap stages,
+                              const int &axis,
+                              const bool &is_ascend,
+                              const std::string &name) {
+  int pos_axis = axis;
+  if (pos_axis < 0) {
+    pos_axis += A->shape.size();
+  }
+  auto sort_index = ArgSort2(A, target, stages, pos_axis, is_ascend, name + "_index");
+  auto res        = Compute(
       A->shape,
       [=](const std::vector<Expr> &indices) {
         std::vector<Expr> A_indices(indices);
-        A_indices[pos_axis] = sort_index(indices);
+        A_indices[pos_axis] = sort_index.at(0)(indices);
         return A(A_indices);
       },
       name);
-  stages->InsertLazily(sort_index);
-  return {res, sort_index, positions};
+  stages->InsertLazily(sort_index.at(0));
+  return {res, sort_index.at(0), sort_index.at(1)};
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr &attrs,
@@ -281,6 +295,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
       ir::ModuleExpr mod_expr(vec_ast);
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
+      auto blocks = ir_sch.GetAllBlocks();
+
       long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
       if (prod_size > 1) {
         if (target.arch == Target::Arch::NVGPU) {
@@ -332,10 +348,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(const framework::NodeA
       CHECK(pack_args[1].is_string());
       tensor_name = pack_args[1].operator std::string();
     }
-    ir::Tensor out = ArgSort(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    auto out = ArgSort2(tensor_A, target, stages, axis, is_ascend, tensor_name);
     std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(out));
+    stages->InsertLazily(out.at(0));
+    res.push_back(CINNValue(out.at(0)));
     CHECK(!out_type.empty()) << "Output type of ArgSort is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
