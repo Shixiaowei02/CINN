@@ -301,12 +301,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
       ir_sch.SetBuffer(blocks[1], "local");
 
       long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
-      if (prod_size > 1) {
-        if (target.arch == Target::Arch::NVGPU) {
-          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-        } else if (target.arch == Target::Arch::X86) {
-          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-        }
+      if (prod_size > 1 && target.arch == Target::Arch::X86) {
+        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
       LOG(INFO) << "exprs --- " << ir_sch.GetModule().GetExprs().at(0);
       std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -317,7 +313,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(sort_compute, sort_schedule, "strategy.sort.x86", 1);
+  strategy->AddImpl(sort_compute, sort_schedule, "strategy.sort", 1);
   return strategy;
 }
 
@@ -379,12 +375,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(const framework::NodeA
       auto blocks = ir_sch.GetAllBlocks();
       ir_sch.SetBuffer(blocks[0], "local");
       long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
-      if (prod_size > 1) {
-        if (target.arch == Target::Arch::NVGPU) {
-          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-        } else if (target.arch == Target::Arch::X86) {
-          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-        }
+      if (prod_size > 1 && target.arch == Target::Arch::X86) {
+        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
       std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
@@ -398,7 +390,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(const framework::NodeA
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(argsort_compute, argsort_schedule, "strategy.argsort.x86", 1);
+  strategy->AddImpl(argsort_compute, argsort_schedule, "strategy.argsort", 1);
   return strategy;
 }
 
@@ -441,7 +433,7 @@ std::vector<std::vector<int>> InferShapeForTopK(const std::vector<std::vector<in
 
 std::vector<Type> InferDtypeForTopK(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK_EQ(inputs_type.size(), 1UL) << "The input's type size should be 1! Please check again.";
-  std::vector<Type> res{inputs_type[0], Int(32)};
+  std::vector<Type> res{inputs_type[0], Int(64)};
   return res;
 }
 

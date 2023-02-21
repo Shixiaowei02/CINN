@@ -34,7 +34,7 @@ void top_k(const Instruction& instr, const DecomposerContext& context) {
   auto sort_tmp    = builder->Sort(x, axis, false);
   auto sort_out    = builder->Slice(sort_tmp, {axis}, {0}, {k});
   auto argsort_tmp = builder->ArgSort(x, axis, false);
-  auto argsort_out = builder->Slice(argsort_tmp, {axis}, {0}, {k});
+  auto argsort_out = builder->Cast(builder->Slice(argsort_tmp, {axis}, {0}, {k}), "int64");
 
   // map the the output of decomposed operator to the original.
   context.MapOutToOrigin(sort_out, output);
