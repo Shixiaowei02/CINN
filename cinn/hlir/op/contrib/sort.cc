@@ -426,8 +426,16 @@ std::vector<std::vector<int>> InferShapeForTopK(const std::vector<std::vector<in
   auto res  = inputs_shape;
   auto k_it = attrs.find("k");
   CHECK(k_it != attrs.end()) << "The attr k of topk does not exist.";
-  int k         = absl::get<int>(k_it->second);
-  res[0].back() = k;
+  int k        = absl::get<int>(k_it->second);
+  auto axis_it = attrs.find("axis");
+  CHECK(axis_it != attrs.end()) << "The attr axis of topk does not exist.";
+  int axis = absl::get<int>(axis_it->second);
+  if (axis < 0) {
+    axis += res[0].size();
+  }
+  CHECK_GE(axis, 0);
+  CHECK_LT(axis, res[0].size());
+  res[0][axis] = k;
   return {res[0], res[0]};
 }
 

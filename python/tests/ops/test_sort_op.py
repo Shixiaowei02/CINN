@@ -26,7 +26,7 @@ from cinn.common import *
 
 @OpTestTool.skip_if(not is_compiled_with_cuda(),
                     "x86 test will be skipped due to timeout.")
-class TestTopKOp(OpTest):
+class TestSortOp(OpTest):
     def setUp(self):
         self.init_case()
 
@@ -37,17 +37,19 @@ class TestTopKOp(OpTest):
                 4,
             ]).astype("float32")
         }
+        self.axis = 1
+        self.descending = False
 
     def build_paddle_program(self, target):
         x1 = paddle.to_tensor(self.inputs["x1"], stop_gradient=True)
-        out = paddle.sort(x1, 1, False)
+        out = paddle.sort(x1, self.axis, self.descending)
 
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("sum")
         x1 = builder.create_input(Float(32), self.inputs["x1"].shape, "x1")
-        out = builder.sort(x1, 1, True)
+        out = builder.sort(x1, self.axis, not self.descending)
         prog = builder.build()
         forward_res = self.get_cinn_output(prog, target, [x1],
                                            [self.inputs["x1"]], [out])
@@ -56,6 +58,42 @@ class TestTopKOp(OpTest):
 
     def test_check_results(self):
         self.check_outputs_and_grads()
+
+
+class TestSortCase1(TestSortOp):
+    def init_case(self):
+        self.inputs = {
+            "x1": np.random.random([
+                2,
+                4,
+            ]).astype("float32")
+        }
+        self.axis = 0
+        self.descending = False
+
+
+class TestSortCase2(TestSortOp):
+    def init_case(self):
+        self.inputs = {
+            "x1": np.random.random([
+                2,
+                4,
+            ]).astype("float32")
+        }
+        self.axis = 0
+        self.descending = True
+
+
+class TestSortCase3(TestSortOp):
+    def init_case(self):
+        self.inputs = {
+            "x1": np.random.random([
+                2,
+                4,
+            ]).astype("float32")
+        }
+        self.axis = 1
+        self.descending = True
 
 
 if __name__ == "__main__":

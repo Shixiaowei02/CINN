@@ -37,18 +37,20 @@ class TestTopKOp(OpTest):
                 4,
             ]).astype("float32")
         }
+        self.k = 1
+        self.axis = 1
 
     def build_paddle_program(self, target):
         axis = -1
         x1 = paddle.to_tensor(self.inputs["x1"], stop_gradient=True)
-        out = paddle.topk(x1, 1, axis)
+        out = paddle.topk(x1, self.k, self.axis)
 
         self.paddle_outputs = [out[0], out[1]]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("sum")
         x1 = builder.create_input(Float(32), self.inputs["x1"].shape, "x1")
-        out = builder.top_k(x1, 1, -1, False)
+        out = builder.top_k(x1, self.k, self.axis, False)
         prog = builder.build()
         forward_res = self.get_cinn_output(
             prog, target, [x1], [self.inputs["x1"]], [out[0], out[1]])
@@ -57,6 +59,31 @@ class TestTopKOp(OpTest):
 
     def test_check_results(self):
         self.check_outputs_and_grads()
+
+
+class TestTopKCase1(TestTopKOp):
+    def init_case(self):
+        self.inputs = {
+            "x1": np.random.random([
+                2,
+                4,
+            ]).astype("float32")
+        }
+        self.k = 2
+        self.axis = 1
+
+
+class TestTopKCase2(TestTopKOp):
+    def init_case(self):
+        print("TestTopKCase2 ---------")
+        self.inputs = {
+            "x1": np.random.random([
+                2,
+                4,
+            ]).astype("float32")
+        }
+        self.k = 1
+        self.axis = 0
 
 
 if __name__ == "__main__":
