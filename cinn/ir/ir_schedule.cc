@@ -1085,7 +1085,6 @@ void ScheduleImpl::SetBuffer(Expr& block, const std::string& memory_type, bool f
 }
 
 void ScheduleImpl::MergeExprs() {
-  LOG(FATAL);
   auto exprs = this->GetModule().GetExprs();
   if (exprs.size() == 1U) return;
   CHECK(exprs[0].As<ir::Block>());
