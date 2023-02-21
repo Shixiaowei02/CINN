@@ -295,7 +295,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
       ir::ModuleExpr mod_expr(vec_ast);
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
+      LOG(INFO) << "sort_schedule start";
       auto blocks = ir_sch.GetAllBlocks();
+      ir_sch.SetBuffer(blocks[0], "local");
+      ir_sch.SetBuffer(blocks[1], "local");
 
       long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
       if (prod_size > 1) {
@@ -348,6 +351,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(const framework::NodeA
       CHECK(pack_args[1].is_string());
       tensor_name = pack_args[1].operator std::string();
     }
+    LOG(INFO) << "argsort_compute start";
     auto out = ArgSort2(tensor_A, target, stages, axis, is_ascend, tensor_name);
     std::vector<CINNValue> res;
     stages->InsertLazily(out.at(0));
@@ -372,6 +376,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(const framework::NodeA
       ir::ModuleExpr mod_expr(vec_ast);
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
+      auto blocks = ir_sch.GetAllBlocks();
+      ir_sch.SetBuffer(blocks[0], "local");
       long prod_size = std::accumulate(output_shapes[0].begin(), output_shapes[0].end(), 1, std::multiplies<int>());
       if (prod_size > 1) {
         if (target.arch == Target::Arch::NVGPU) {
