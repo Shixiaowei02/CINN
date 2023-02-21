@@ -143,6 +143,89 @@ ir::Tensor Sort(const ir::Tensor &A,
   return res;
 }
 
+std::vector<ir::Tensor> Sort2(const ir::Tensor &A,
+                              const common::Target &target,
+                              poly::StageMap stages,
+                              const int &axis,
+                              const bool &is_ascend,
+                              const std::string &name) {
+  std::string find_func_name;
+  std::string index_func_name;
+  if (target.arch == common::Target::Arch::NVGPU) {
+    index_func_name.assign("cinn_cuda_");
+    find_func_name.assign("cinn_cuda_find_int_nd");
+  } else if (target.arch == common::Target::Arch::X86) {
+    index_func_name.assign("cinn_host_");
+    find_func_name.assign("cinn_host_find_int_nd");
+  } else {
+    LOG(FATAL) << "ArgSort only supports X86 and NVGPU ! Please Check.\n";
+  }
+  if (is_ascend) {
+    index_func_name.append("lt_num_float");
+  } else {
+    index_func_name.append("gt_num_float");
+  }
+  int pos_axis = axis;
+  if (pos_axis < 0) {
+    pos_axis += A->shape.size();
+  }
+  auto positions = Compute(
+      A->shape,
+      [=](const std::vector<Expr> &indices) {
+        Expr offset(0);
+        Expr stride(1);
+        for (int i = 0; i < indices.size(); i++) {
+          if (i < pos_axis) {
+            offset = offset * A->shape[i] + indices[i];
+          } else if (i == pos_axis) {
+            offset = offset * A->shape[i];
+          } else {
+            offset = offset * A->shape[i] + indices[i];
+            stride = stride * A->shape[i];
+          }
+        }
+        offset            = common::AutoSimplify(offset);
+        stride            = common::AutoSimplify(stride);
+        auto A_shape_axis = A->shape[pos_axis];
+        return lang::CallExtern(index_func_name, {A, A_shape_axis, A(indices), offset, stride});
+      },
+      name + "_positions");
+  auto sort_index = Compute(
+      A->shape,
+      [=](const std::vector<Expr> &indices) {
+        Expr offset(0);
+        Expr stride(1);
+        for (int i = 0; i < indices.size(); i++) {
+          if (i < pos_axis) {
+            offset = offset * A->shape[i] + indices[i];
+          } else if (i == pos_axis) {
+            offset = offset * A->shape[i];
+          } else {
+            offset = offset * A->shape[i] + indices[i];
+            stride = stride * A->shape[i];
+          }
+        }
+        offset = common::AutoSimplify(offset);
+        stride = common::AutoSimplify(stride);
+
+        auto A_shape_axis = A->shape[pos_axis];
+        auto idx = lang::CallExtern(find_func_name, {positions, A_shape_axis, indices[pos_axis], offset, stride});
+        return idx;
+      },
+      name + "_sort_index");
+  stages->InsertLazily(positions);
+  auto res = Compute(
+      A->shape,
+      [=](const std::vector<Expr> &indices) {
+        std::vector<Expr> A_indices(indices);
+        A_indices[pos_axis] = sort_index(indices);
+        return A(A_indices);
+      },
+      name);
+  stages->InsertLazily(sort_index);
+  return {res, sort_index, positions};
+}
+
 std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr &attrs,
                                                        const std::vector<ir::Tensor> &inputs,
                                                        const std::vector<Type> &out_type,
@@ -175,10 +258,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
       CHECK(pack_args[1].is_string());
       tensor_name = pack_args[1].operator std::string();
     }
-    ir::Tensor out = Sort(tensor_A, target, stages, axis, is_ascend, tensor_name);
-    std::vector<CINNValue> res;
-    stages->InsertLazily(out);
-    res.push_back(CINNValue(out));
+    std::vector<ir::Tensor> out = Sort2(tensor_A, target, stages, axis, is_ascend, tensor_name);
+    stages->InsertLazily(out[0]);
+    std::vector<CINNValue> res{CINNValue(out[0]), CINNValue(out[1]), CINNValue(out[2])};
     CHECK(!out_type.empty()) << "Output type of Sort is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
@@ -207,14 +289,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(const framework::NodeAttr
           pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
         }
       }
+      LOG(INFO) << "exprs --- " << ir_sch.GetModule().GetExprs().at(0);
       std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
     } else {
-      CHECK(!args.empty()) << "The input argument of sort_schedule is empty! Please check.\n";
-      CINNValuePack arg_pack = args[0];
-      Expr out               = arg_pack[0];
-      CHECK(out.as_tensor());
-      *ret = arg_pack;
+      LOG(FATAL) << "error!";
     }
   });
 
