@@ -14,7 +14,12 @@
 
 #include "cinn/utils/filesystem.h"
 
+#include <cstdlib>
+
+#include "glog/logging.h"
+
 #ifdef __linux__
+#include <errno.h>
 #include <sys/stat.h>
 #endif
 
