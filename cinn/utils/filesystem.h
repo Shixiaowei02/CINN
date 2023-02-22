@@ -15,6 +15,8 @@
 namespace cinn {
 namespace filesystem {
 
+struct path {};
+
 bool is_directory(const char* path);
 
 const char* temp_directory_path();

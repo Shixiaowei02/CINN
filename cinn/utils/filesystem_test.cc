@@ -14,6 +14,16 @@
 
 #include "cinn/utils/filesystem.h"
 
+#include "glog/logging.h"
+#include "gtest/gtest.h"
+
 namespace cinn {
-namespace filesystem {}  // namespace filesystem
+namespace filesystem {
+
+TEST(temp_directory_path, FileSystem) {
+  const char* tmp_path = temp_directory_path();
+  CHECK(is_directory(tmp_path));
+}
+
+}  // namespace filesystem
 }  // namespace cinn
