@@ -5,6 +5,7 @@ ENDIF()
 
 include(ExternalProject)
 
+set(JITIFY_GIT_TAG b3483f34734c60359c72c19c18ab2590699ff08e)
 set(JITIFY_SOURCE_PATH ${THIRD_PARTY_PATH}/install/jitify)
 set(JITIFY_STL_HEADERS ${THIRD_PARTY_PATH}/install/jitify/stl_headers)
 
@@ -12,7 +13,7 @@ ExternalProject_Add(
   external_jitify
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY "https://github.com/NVIDIA/jitify.git"
-  GIT_TAG master
+  GIT_TAG ${JITIFY_GIT_TAG}
   PREFIX ${THIRD_PARTY_PATH}/jitify
   SOURCE_DIR ${JITIFY_SOURCE_PATH}
   CONFIGURE_COMMAND ""
@@ -23,7 +24,7 @@ ExternalProject_Add(
 )
 
 include_directories(${JITIFY_SOURCE_PATH})
-add_definitions(-DNVRTC_STL_PATH="${JITIFY_STL_HEADERS}")
+add_definitions(-DJITIFY_MD5="${JITIFY_GIT_TAG}")
 message(STATUS "Jitify header files path: ${JITIFY_STL_HEADERS}")
 
 add_library(extern_jitify INTERFACE)
