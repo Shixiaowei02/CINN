@@ -29,7 +29,7 @@ void top_k(const Instruction& instr, const DecomposerContext& context) {
   auto* builder = context.builder();
   int k         = instr.GetAttrs<int>("k");
   CHECK_GT(k, 0) << "The attribute k must be greater than 0.";
-  int axis = x->shape.size() - 1;
+  int axis = instr.GetAttrs<int>("axis");
 
   auto sort_tmp    = builder->Sort(x, axis, false);
   auto sort_out    = builder->Slice(sort_tmp, {axis}, {0}, {k});
